@@ -39,6 +39,10 @@ object Test extends Reactor {
         colModel.setCellEditor(prop.cellEditor)
         colModel.setCellRenderer(prop.cellRenderer)
       }
+      def openSelectedPDF() {
+        val selectedPDF = selection.rows.head
+        sys.process.Process(f"gnome-open ${tableModel.getDocAtRow(selectedPDF).pdfFile.getAbsoluteFile}").run()
+      }
     }
 
     val viewer = new ImageViewer(Some(getFirstPageAsImage(pdfs(0))))
@@ -51,6 +55,7 @@ object Test extends Reactor {
     val menuB = new MenuBar {
       contents += new Menu("File") {
         contents += new MenuItem(Action("Save All Meta"){tableModel.saveAllMeta()})
+        contents += new MenuItem(Action("Open Selected PDF"){table.openSelectedPDF()})
       }
     }
 
@@ -154,6 +159,8 @@ case class TModel(_docs: IndexedSeq[Doc], properties: IndexedSeq[DocProperty]) e
     }
     updates.clear()
   }
+
+  def getDocAtRow(row: Int) = docs(row)
 }
 
 trait DocProperty {
