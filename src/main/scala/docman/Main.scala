@@ -1,12 +1,7 @@
 package docman
 
 import java.io.{FilenameFilter, File}
-import resource._
-import org.apache.pdfbox.pdmodel.{PDPage, PDDocument}
-import collection.JavaConverters._
 import scala.swing._
-import java.awt.image.BufferedImage
-import java.awt.Image
 import scala.swing.event.TableRowsSelected
 import javax.swing.ListSelectionModel
 
@@ -15,20 +10,16 @@ import javax.swing.ListSelectionModel
  * @since 9/8/13
  */
 
-object Test extends Reactor {
+object Main extends Reactor {
   val dir = new File("documents/A")
   val pdfs: Array[File] =
     dir.listFiles(new FilenameFilter { def accept(dir: File, name: String): Boolean = name.endsWith("pdf")})
-
-
-  def getFirstPageAsImage(f: File): BufferedImage = (for(pd <- managed(PDDocument.load(f))) yield
-    pd.getDocumentCatalog.getAllPages.asScala.head.asInstanceOf[PDPage].convertToImage(BufferedImage.TYPE_BYTE_GRAY,150)).opt.get
 
   def main(args: Array[String]) {
     val docs = pdfs.map(Doc.fromFile)
     val tableModel = TModel(docs, DocProperty.ALL)
 
-    val table = new Table{
+    val table = new Table with SortableTable {
       model = tableModel
       peer.getSelectionModel.setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
       peer.setAutoCreateRowSorter(true)
@@ -37,16 +28,17 @@ object Test extends Reactor {
         colModel.setCellRenderer(prop.cellRenderer)
       }
       def openSelectedPDF() {
-        val selectedPDF = selection.rows.head
-        sys.process.Process(f"gnome-open ${tableModel.getDocAtRow(selectedPDF).pdfFile.getAbsoluteFile}").run()
+        selection.rows.headOption.foreach{selectedPDF =>
+          sys.process.Process(f"gnome-open ${tableModel.getDocAtRow(selectedPDF).pdfFile.getAbsoluteFile}").run()
+        }
       }
     }
 
-    val viewer = new ImageViewer(Some(getFirstPageAsImage(pdfs(0))))
+    val viewer = new PDFViewer
 
     this.listenTo(table.selection)
     this.reactions += {
-      case TableRowsSelected(_,_,_) => viewer.setNewImage(getFirstPageAsImage(pdfs(table.selection.rows.head)))
+      case TableRowsSelected(_,_,_) => viewer.setFile(Some(pdfs(table.viewToModelRow(table.selection.rows.head))))
     }
 
     val menuB = new MenuBar {
@@ -66,22 +58,3 @@ object Test extends Reactor {
     frame.open()
   }
 }
-
-class ImageViewer(var image: Option[BufferedImage] = None) extends Component {
-
-  minimumSize = new Dimension(400,500)
-  def setNewImage(img: BufferedImage){
-    this.image = Some(img)
-    peer.repaint()
-  }
-
-  override protected def paintComponent(g: swing.Graphics2D) {
-    g.clearRect(g.getClipBounds.x,g.getClipBounds.y,g.getClipBounds.width,g.getClipBounds.height)
-    for(img <- image){
-      g.drawImage(img.getScaledInstance(peer.getWidth,peer.getHeight,Image.SCALE_DEFAULT),0,0,null)
-    }
-  }
-}
-
-
-
