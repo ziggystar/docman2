@@ -7,7 +7,7 @@ import scala.collection.mutable
  * @author Thomas Geier
  * @since 10/26/13
  */
-case class TModel(_docs: IndexedSeq[Doc], properties: IndexedSeq[DocProperty]) extends AbstractTableModel{
+case class DocumentTableModel(_docs: IndexedSeq[Doc], properties: IndexedSeq[DocProperty]) extends AbstractTableModel{
   var docs = mutable.ArrayBuffer(_docs:_*)
 
   val updates = new mutable.HashMap[Int,Map[Int,String]]
