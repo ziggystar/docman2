@@ -14,15 +14,12 @@ trait DocProperty {
   def cellEditor = new DefaultCellEditor(new JTextField)
   def isEditable: Boolean = true
   def name: String
-  def defaultValue: String
   def pdfboxExtractor: PDDocumentInformation => String
   def serialPrefix: String
   def serializeToLine(a: String): String = f"$serialPrefix:$a"
   def deserialize(line: String): Option[String] =
     Option(line).filter(_.startsWith(f"$serialPrefix:")).map(_.drop(serialPrefix.size + 1))
 }
-
-
 
 object DocProperty {
   val ALL = IndexedSeq(AuthorProp, SubjectProp, DateProp)

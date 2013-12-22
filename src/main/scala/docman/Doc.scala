@@ -26,7 +26,8 @@ object Doc{
         (for{
           line <- src.getLines()
           prop <- DocProperty.ALL
-        } yield prop.deserialize(line).map(prop -> _)).flatten.toMap
+          deserialized <- prop.deserialize(line)
+        } yield prop -> deserialized).toMap
       }).opt).flatten.getOrElse(Map())
     Doc(pdf,sidecar,mapFromPdf ++ mapFromSidecar)
   }
