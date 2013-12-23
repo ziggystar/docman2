@@ -17,10 +17,13 @@ class DocumentTable(val documentModel: DocumentTableModel) extends Table with So
   peer.setAutoCreateRowSorter(true)
 
   //set editor and renderer for each column
-  (0 until peer.getColumnCount).map(peer.getColumnModel.getColumn).zip(DProp.ALL).foreach {
-    case (colModel, prop) =>
-      colModel.setCellEditor(prop.cellEditor)
-      colModel.setCellRenderer(prop.cellRenderer)
+  for{
+    col <- 0 until peer.getColumnCount
+    prop <- documentModel.propertyAtColumn(col).map(_.asInstanceOf[SwingTableProperty])
+    tableColumn = peer.getColumnModel.getColumn(col)
+  } {
+    tableColumn.setCellEditor(prop.cellEditor)
+    tableColumn.setCellRenderer(prop.cellRenderer)
   }
 
   def getSelectedDocuments: Iterable[Doc] = this.selection.rows.map(this.viewToModelRow).map(documentModel.getDocAtRow)

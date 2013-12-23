@@ -1,12 +1,13 @@
 package docman
 
 import javax.swing.table.DefaultTableCellRenderer
-import javax.swing.{JTextField, DefaultCellEditor}
+import javax.swing.{JTable, JTextField, DefaultCellEditor}
 import java.sql.Date
 import scala.util.Try
 import java.io.{FileWriter, File}
 import scala.io.Source
 import org.apache.pdfbox.pdmodel.PDDocumentInformation
+import java.awt.Component
 
 /**
  * Typed document property class.
@@ -60,6 +61,21 @@ object DateDP extends DProp with LineSerializer with SwingTableProperty{
 
   def mydeserialize(s: String): Option[Date] = Try(Date.valueOf(s)).toOption
   def myserialize(x: Date): String = x.toString
+
+  override def cellRenderer: DefaultTableCellRenderer = {
+    new DefaultTableCellRenderer{
+      override def getTableCellRendererComponent(table: JTable,
+                                                 value: scala.Any,
+                                                 isSelected: Boolean,
+                                                 hasFocus: Boolean,
+                                                 row: Int,
+                                                 column: Int): Component = {
+        println("hi there")
+        val newValue = "so what"
+        super.getTableCellRendererComponent(table,newValue,isSelected,hasFocus,row,column)
+      }
+    }
+  }
 }
 
 case class PropertyMap protected(m: Map[DProp,AnyRef]){
