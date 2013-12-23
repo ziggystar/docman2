@@ -23,7 +23,7 @@ object Doc{
   def fromFile(pdf: File): Doc = {
     val sidecar = new File(pdf.getAbsolutePath.dropRight(3) + "smd")
     val pdfMeta = getMetaData(pdf)
-    val properties = DProp.readPorpoertiesFromPDF(pdfMeta) ++
+    val properties = DProp.readPropertiesFromPDF(pdfMeta) ++
       Some(sidecar).filter(_.exists).map(DProp.readPropertiesFromFile).getOrElse(PropertyMap.empty)
     Doc(pdf,sidecar,properties)
   }

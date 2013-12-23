@@ -83,7 +83,7 @@ object DProp {
   import resource._
   val ALL: IndexedSeq[DProp with LineSerializer with SwingTableProperty] = IndexedSeq(AuthorDP, SubjectDP, DateDP)
 
-  def readPorpoertiesFromPDF(pd: PDDocumentInformation): PropertyMap = {
+  def readPropertiesFromPDF(pd: PDDocumentInformation): PropertyMap = {
     val props = for {
       prop <- ALL.collect{case pdfProp: DProp with PDFExtractor => pdfProp}
       value <- prop.pdfboxExtractor(pd)
