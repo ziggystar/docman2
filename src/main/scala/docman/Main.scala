@@ -16,7 +16,7 @@ object Main extends Reactor {
 
   def main(args: Array[String]) {
     val docs = pdfs.map(Doc.fromFile)
-    val tableModel = DocumentTableModel(docs, DocProperty.ALL)
+    val tableModel = DocumentTableModel(docs, DProp.ALL)
 
     val table = new DocumentTable(tableModel)
 
