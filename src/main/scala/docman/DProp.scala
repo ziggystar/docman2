@@ -44,14 +44,15 @@ trait SwingTableProperty{
 }
 
 object SwingTableProperty{
-  def stringRenderer[T](f: T => String) = new DefaultTableCellRenderer{
+  def stringRenderer[T](_f: T => String) = new DefaultTableCellRenderer{
+    val f: T => String = (t: T) => Option(t).map(_f).getOrElse(null)
     override def getTableCellRendererComponent(table: JTable,
                                                value: scala.Any,
                                                isSelected: Boolean,
                                                hasFocus: Boolean,
                                                row: Int,
                                                column: Int): Component = {
-      super.getTableCellRendererComponent(table,f(value.asInstanceOf[T]),isSelected,hasFocus,row,column)
+      super.getTableCellRendererComponent(table,value,isSelected,hasFocus,row,column)
     }
 
     override def setValue(value: scala.Any): Unit = super.setValue(f(value.asInstanceOf[T]))
@@ -78,15 +79,19 @@ object DateDP extends DProp with LineSerializer with SwingTableProperty{
   def mydeserialize(s: String): Option[Date] = Try(Date.valueOf(s)).toOption
   def myserialize(x: Date): String = x.toString
 
-  override def cellRenderer: DefaultTableCellRenderer = SwingTableProperty.stringRenderer((_: AnyRef) => "hi")
+  override def cellRenderer: DefaultTableCellRenderer = SwingTableProperty.stringRenderer[Date](_.toString)
+
+  override def cellEditor: DefaultCellEditor = new DefaultCellEditor(new JTextField){
+    override def getCellEditorValue: AnyRef = Try(Date.valueOf(getComponent.asInstanceOf[JTextField].getText)).getOrElse(null)
+  }
 }
 
 case class PropertyMap protected(m: Map[DProp,AnyRef]){
   def get(p: DProp): Option[p.T] = m.get(p).map(_.asInstanceOf[p.T])
   def put[P <: DProp](p: P)(v: p.T): PropertyMap = new PropertyMap(m + (p->v))
   def ++(pm: PropertyMap): PropertyMap = new PropertyMap(m ++ pm.m)
-  def serializeToLines: Iterable[String] = m.map{
-    case (k,v) => {
+  def serializeToLines: Iterable[String] = m.collect{
+    case (k,v) if v != null => {
       val prop = k.asInstanceOf[DProp with LineSerializer]
       prop.serialize(v.asInstanceOf[prop.T])
     }
