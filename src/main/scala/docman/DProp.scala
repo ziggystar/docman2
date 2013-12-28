@@ -43,6 +43,21 @@ trait SwingTableProperty{
   def cellEditor: DefaultCellEditor = new DefaultCellEditor(new JTextField)
 }
 
+object SwingTableProperty{
+  def stringRenderer[T](f: T => String) = new DefaultTableCellRenderer{
+    override def getTableCellRendererComponent(table: JTable,
+                                               value: scala.Any,
+                                               isSelected: Boolean,
+                                               hasFocus: Boolean,
+                                               row: Int,
+                                               column: Int): Component = {
+      super.getTableCellRendererComponent(table,f(value.asInstanceOf[T]),isSelected,hasFocus,row,column)
+    }
+
+    override def setValue(value: scala.Any): Unit = super.setValue(f(value.asInstanceOf[T]))
+  }
+}
+
 trait StringProp extends DProp with StringStringSerializable with SwingTableProperty{
   type T = String
 }
@@ -53,6 +68,7 @@ object AuthorDP extends StringProp {
 object SubjectDP extends StringProp{
   def name: String = "Subject"
 }
+
 object DateDP extends DProp with LineSerializer with SwingTableProperty{
   type T = Date
 
@@ -62,20 +78,7 @@ object DateDP extends DProp with LineSerializer with SwingTableProperty{
   def mydeserialize(s: String): Option[Date] = Try(Date.valueOf(s)).toOption
   def myserialize(x: Date): String = x.toString
 
-  override def cellRenderer: DefaultTableCellRenderer = {
-    new DefaultTableCellRenderer{
-      override def getTableCellRendererComponent(table: JTable,
-                                                 value: scala.Any,
-                                                 isSelected: Boolean,
-                                                 hasFocus: Boolean,
-                                                 row: Int,
-                                                 column: Int): Component = {
-        println("hi there")
-        val newValue = "so what"
-        super.getTableCellRendererComponent(table,newValue,isSelected,hasFocus,row,column)
-      }
-    }
-  }
+  override def cellRenderer: DefaultTableCellRenderer = SwingTableProperty.stringRenderer((_: AnyRef) => "hi")
 }
 
 case class PropertyMap protected(m: Map[DProp,AnyRef]){

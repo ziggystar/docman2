@@ -3,6 +3,7 @@ package docman
 import java.io.{FilenameFilter, File}
 import scala.swing._
 import scala.swing.event.TableRowsSelected
+import javax.swing.event.{ListSelectionEvent, ListSelectionListener}
 
 /**
  * @author Thomas Geier
@@ -22,10 +23,12 @@ object Main extends Reactor {
 
     val viewer = new PDFViewer
 
-    this.listenTo(table.selection)
-    this.reactions += {
-      case TableRowsSelected(_,_,_) => table.getSelectedDocuments.headOption.foreach(d => viewer.setFile(Some(d.pdfFile)))
-    }
+    table.getSelectionModel.addListSelectionListener(new ListSelectionListener {
+      def valueChanged(e: ListSelectionEvent): Unit = {
+        if(!e.getValueIsAdjusting)
+          table.getSelectedDocuments.headOption.foreach(d => viewer.setFile(Some(d.pdfFile)))
+      }
+    })
 
     val menuB = new MenuBar {
       contents += new Menu("File") {
@@ -41,9 +44,8 @@ object Main extends Reactor {
     val frame = new MainFrame{
       menuBar = menuB
       minimumSize = new Dimension(800,600)
-      contents = new SplitPane(Orientation.Vertical,new ScrollPane(table),viewer)
+      contents = new SplitPane(Orientation.Vertical,new ScrollPane(Component.wrap(table)),viewer)
     }
-    viewer.listenTo(table)
 
     frame.open()
   }
