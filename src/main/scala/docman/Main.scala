@@ -7,6 +7,7 @@ import javax.swing.event.{ListSelectionEvent, ListSelectionListener}
 import javax.swing.{RowFilter, DefaultRowSorter, JLabel, JTextField}
 import migpanel.MigPanel
 import javax.swing.RowFilter.Entry
+import javax.imageio.ImageIO
 
 /**
  * @author Thomas Geier
@@ -14,6 +15,7 @@ import javax.swing.RowFilter.Entry
  */
 
 object Main extends Reactor {
+  val versionString = "1.0"
   val dir = new File("documents/A")
   val pdfs: Array[File] =
     dir.listFiles(new FilenameFilter { def accept(dir: File, name: String): Boolean = name.endsWith("pdf")})
@@ -55,15 +57,21 @@ object Main extends Reactor {
       }
     }
 
-    val leftPane = new MigPanel
+    val leftPane = new MigPanel("fill","","[10]10[fill]")
     leftPane.add(Component.wrap(new JLabel("Filter")),"")
     leftPane.add(quickSearchBar,"wrap")
-    leftPane.add(new ScrollPane(Component.wrap(table)),"span 2")
+    val scrollPane: ScrollPane = new ScrollPane(Component.wrap(table))
+    leftPane.add(scrollPane,"growx, pushy, span 2")
 
     val frame = new MainFrame{
+      val icon = ImageIO.read(this.getClass.getClassLoader.getResourceAsStream("images/app_icon.png"))
+      iconImage = icon
+      title = f"Docman - $versionString"
       menuBar = menuB
       minimumSize = new Dimension(800,600)
-      contents = new SplitPane(Orientation.Vertical,leftPane,viewer)
+      private val splitPane: SplitPane = new SplitPane(Orientation.Vertical, leftPane, viewer)
+      splitPane.resizeWeight = 0.6
+      contents = splitPane
     }
 
     frame.open()
