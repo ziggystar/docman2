@@ -8,6 +8,7 @@ import java.io.{FileWriter, File}
 import scala.io.Source
 import org.apache.pdfbox.pdmodel.PDDocumentInformation
 import java.awt.Component
+import java.text.DateFormat
 
 /**
  * Typed document property class.
@@ -51,9 +52,8 @@ object SwingTableProperty{
                                                isSelected: Boolean,
                                                hasFocus: Boolean,
                                                row: Int,
-                                               column: Int): Component = {
+                                               column: Int): Component =
       super.getTableCellRendererComponent(table,value,isSelected,hasFocus,row,column)
-    }
 
     override def setValue(value: scala.Any): Unit = super.setValue(f(value.asInstanceOf[T]))
   }
@@ -73,16 +73,22 @@ object SubjectDP extends StringProp{
 object DateDP extends DProp with LineSerializer with SwingTableProperty{
   type T = Date
 
+  val displayFormat = DateFormat.getDateInstance(DateFormat.MEDIUM)
+  val shortFormat = DateFormat.getDateInstance(DateFormat.SHORT, java.util.Locale.getDefault)
+
+
   /** The name of the property. */
   def name: String = "Date"
 
   def mydeserialize(s: String): Option[Date] = Try(Date.valueOf(s)).toOption
   def myserialize(x: Date): String = x.toString
 
-  override def cellRenderer: DefaultTableCellRenderer = SwingTableProperty.stringRenderer[Date](_.toString)
+  override def cellRenderer: DefaultTableCellRenderer = SwingTableProperty.stringRenderer[Date](d => displayFormat.format(new java.util.Date(d.getTime)))
 
   override def cellEditor: DefaultCellEditor = new DefaultCellEditor(new JTextField){
-    override def getCellEditorValue: AnyRef = Try(Date.valueOf(getComponent.asInstanceOf[JTextField].getText)).getOrElse(null)
+    override def getCellEditorValue: AnyRef = Try(Date.valueOf(getComponent.asInstanceOf[JTextField].getText))
+      .recoverWith[Date]{ case _ => Try(new Date(shortFormat.parse(getComponent.asInstanceOf[JTextField].getText).getTime))}
+      .getOrElse(null)
   }
 }
 
