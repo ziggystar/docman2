@@ -13,18 +13,20 @@ import org.apache.pdfbox.pdmodel.{PDPage, PDDocument}
  * @since 12/15/13
  */
 class PDFViewer(var pdf: Option[File] = None) extends Component {
-  def getPageAsImage(f: File, page: Int): Either[String,BufferedImage] = (for{
+  minimumSize = new Dimension(400,500)
+
+  def getPageAsImage(f: File, page: Int, resolution: Int = 200): Either[String,BufferedImage] = (for{
     pd <- managed(PDDocument.load(f))
-  } yield pd.getDocumentCatalog.getAllPages.asScala(page).asInstanceOf[PDPage].convertToImage(BufferedImage.TYPE_BYTE_GRAY,150)).either.left.map(_.toString)
+  } yield pd.getDocumentCatalog.getAllPages.asScala(page).asInstanceOf[PDPage]
+      .convertToImage(BufferedImage.TYPE_BYTE_GRAY,resolution)).either.left.map(_.toString)
 
 
   /** Tries to load the specified page of the currently set pdf file. */
-  def getPage(page: Int): Option[BufferedImage] = (for{
+  def getPage(page: Int, resolution: Int = 200): Option[BufferedImage] = (for{
     file <- pdf.toRight("no image set").right
-    img <- getPageAsImage(file,page).right
+    img <- getPageAsImage(file,page, resolution).right
   } yield img).right.toOption
 
-  minimumSize = new Dimension(400,500)
   def setFile(f: Option[File]){
     this.pdf = f
     repaint()
@@ -33,7 +35,10 @@ class PDFViewer(var pdf: Option[File] = None) extends Component {
   override protected def paintComponent(g: swing.Graphics2D) {
     g.clearRect(g.getClipBounds.x,g.getClipBounds.y,g.getClipBounds.width,g.getClipBounds.height)
     for(img <- getPage(0)){
-      g.drawImage(img.getScaledInstance(peer.getWidth,peer.getHeight,Image.SCALE_DEFAULT),0,0,null)
+      val (imgW,imgH) = (img.getWidth, img.getHeight)
+      val (cW,cH) = (this.peer.getWidth, this.peer.getHeight)
+      val scale = math.min(cW / imgW.toDouble, cH / imgH.toDouble)
+      g.drawImage(img.getScaledInstance((scale * imgW).toInt,(scale * imgH).toInt,Image.SCALE_DEFAULT),0,0,null)
     }
   }
 }
