@@ -1,6 +1,5 @@
 package docman
 
-import scala.swing.Table
 import javax.swing.{JTable, ListSelectionModel}
 
 /**
