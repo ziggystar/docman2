@@ -1,6 +1,7 @@
 package docman
 
 import javax.swing.{JTable, ListSelectionModel}
+import javax.swing.table.TableModel
 
 /**
  * Swing table widget that displays a list of documents.
@@ -13,14 +14,24 @@ class DocumentTable(val documentModel: DocumentTableModel) extends JTable(docume
   //be able to sort by columns
   setAutoCreateRowSorter(true)
 
-  //set editor and renderer for each column
-  for{
-    col <- 0 until getColumnCount
-    prop <- documentModel.propertyAtColumn(col).map(_.asInstanceOf[SwingTableProperty])
-    tableColumn = getColumnModel.getColumn(col)
-  } {
-    tableColumn.setCellEditor(prop.cellEditor)
-    tableColumn.setCellRenderer(prop.cellRenderer)
+  adjustColumns()
+
+  def adjustColumns(): Unit = {
+    //set editor and renderer for each column
+    for{
+      col <- 0 until getColumnCount
+      prop <- documentModel.propertyAtColumn(col).map(_.asInstanceOf[SwingTableProperty])
+      tableColumn = getColumnModel.getColumn(col)
+    } {
+      tableColumn.setCellEditor(prop.cellEditor)
+      tableColumn.setCellRenderer(prop.cellRenderer)
+    }
+  }
+
+
+  override def setModel(dataModel: TableModel): Unit = {
+    super.setModel(dataModel)
+    adjustColumns()
   }
 
   def getSelectedDocuments: Iterable[Doc] = getSelectedRows.map(convertRowIndexToModel).map(documentModel.getDocAtRow)

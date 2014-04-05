@@ -16,5 +16,4 @@ libraryDependencies += "com.jsuereth" %% "scala-arm" % "1.3"
 //MigLayout
 libraryDependencies += "com.miglayout" % "miglayout-swing" % "4.2"
 
-//configuration
-libraryDependencies += "commons-configuration" % "commons-configuration" % "1.7"
+libraryDependencies += "com.scalarx" % "scalarx_2.10" % "0.2.3"

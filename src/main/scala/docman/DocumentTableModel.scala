@@ -8,7 +8,13 @@ import scala.collection.mutable
  * @since 10/26/13
  */
 case class DocumentTableModel(_docs: IndexedSeq[Doc], properties: IndexedSeq[DProp]) extends AbstractTableModel{
-  var docs = mutable.ArrayBuffer(_docs:_*)
+  private var docs = mutable.ArrayBuffer(_docs:_*)
+
+  def setDocs(newDocs: Seq[Doc]): Unit = {
+    docs.clear()
+    docs ++= newDocs
+    fireTableDataChanged()
+  }
 
   val updates = new mutable.HashMap[Int, PropertyMap] with mutable.SynchronizedMap[Int, PropertyMap]
     .withDefaultValue(PropertyMap.empty)
