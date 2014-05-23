@@ -12,6 +12,7 @@ import java.util.prefs.Preferences
 import rx._
 import rx.ops._
 import scala.swing.FileChooser.SelectionMode
+import java.util.Locale
 
 /**
  * @author Thomas Geier
@@ -19,8 +20,27 @@ import scala.swing.FileChooser.SelectionMode
  */
 
 object Main extends Reactor {
-  val preferences = Preferences.userNodeForPackage(this.getClass)
+  trait PreferenceStorable[T]{
+    def get(p: Preferences, name: String, default: T): T
+    def put(p: Preferences, name: String, value: T): Unit
+  }
 
+  case class PrefStoreString[T](read: String => T, write: T => String) extends PreferenceStorable[T]{
+    override def get(p: Preferences, name: String, default: T): T = read(p.get(name,write(default)))
+    override def put(p: Preferences, name: String, value: T): Unit = p.put(name,write(value))
+  }
+
+  implicit val prefStoreLocale = PrefStoreString[Locale](Locale.forLanguageTag, _.toLanguageTag)
+
+  def createPreferenceVar[T](prefs: Preferences, name: String, default: T)(implicit store: PreferenceStorable[T]): Var[T] = {
+    new Var[T](store.get(prefs,name,default), s"pref:$name"){
+      val saveHook = this.foreach(store.put(prefs,name,_))
+    }
+  }
+
+  val preferences: Preferences = Preferences.userNodeForPackage(this.getClass)
+
+  val myLocale: Var[Locale] = createPreferenceVar(preferences, "locale", Locale.getDefault)
 
   val applicationTitle = "Docman2"
   val versionString = "1.0"
@@ -68,6 +88,22 @@ object Main extends Reactor {
       if (fc.showOpenDialog(panel) == FileChooser.Result.Approve)
         dbDirs.update(Set(fc.selectedFile))
     }))
+    dia.pack()
+    dia.resizable = false
+    dia.open()
+  }
+
+  def showAboutDialog(owner: Window): Unit = {
+    val dia = new Dialog(owner){
+      title = s"$applicationTitle - About"
+      minimumSize = new Dimension(200,200)
+      val panel = new MigPanel()
+      panel.add(new Label("Version"))
+      panel.add(new Label(versionString),"wrap")
+      panel.add(new Label("Detected Locale"))
+      panel.add(new RxLabel(myLocale.map(_.toString)))
+      contents = panel
+    }
     dia.pack()
     dia.resizable = false
     dia.open()
@@ -122,8 +158,11 @@ object Main extends Reactor {
           table.getSelectedDocuments.headOption.foreach(selectedPDF =>
             sys.process.Process(f"gnome-open ${selectedPDF.pdfFile.getAbsoluteFile}").run())
         })
-        contents += new MenuItem(Action("Preferences"){showPreferenceDialog(frame)})
+        contents += new MenuItem(Action("Preferences")(showPreferenceDialog(frame)))
         contents += new MenuItem(Action("Exit"){frame.closeOperation()})
+      }
+      contents += new Menu("About") {
+        contents += new MenuItem(Action("About")(showAboutDialog(frame)))
       }
     }
 
