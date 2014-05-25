@@ -53,15 +53,7 @@ object Main extends Reactor {
   }
 
   val tableModel: DocumentTableModel = DocumentTableModel(docs(), DProp.ALL)
-  val table = new DocumentTable(tableModel)
   val docUpdate = docs.foreach(tableModel.setDocs)
-
-  val myLocale: Var[Locale] = createPreferenceVar(preferences, "locale", Locale.getDefault)
-  val setDefaultLocale = myLocale.foreach { l =>
-    Locale.setDefault(l)
-    tableModel.fireTableDataChanged()
-    println("updating table: " + l.getDisplayCountry)
-  }
 
   def showPreferenceDialog(owner: Window): Unit = {
     val dia = new Dialog(owner)
@@ -89,8 +81,6 @@ object Main extends Reactor {
       val panel = new MigPanel()
       panel.add(new Label("Version"))
       panel.add(new Label(versionString),"wrap")
-      panel.add(new Label("Detected Locale"))
-      panel.add(new RxLabel(myLocale.map(_.toString)))
       contents = panel
     }
     dia.pack()
@@ -100,6 +90,8 @@ object Main extends Reactor {
 
   def main(args: Array[String]) {
     val viewer = new PDFViewer
+
+    val table = new DocumentTable(tableModel)
 
     table.getSelectionModel.addListSelectionListener(new ListSelectionListener {
       def valueChanged(e: ListSelectionEvent): Unit = {
@@ -134,6 +126,12 @@ object Main extends Reactor {
       private val splitPane: SplitPane = new SplitPane(Orientation.Vertical, leftPane, viewer)
       splitPane.resizeWeight = 0.6
       contents = splitPane
+
+      override def closeOperation() {
+        visible = true
+        tableModel.saveAllMeta()
+        super.closeOperation()
+      }
     }
 
 
