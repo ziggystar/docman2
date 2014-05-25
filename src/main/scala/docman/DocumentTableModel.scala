@@ -39,7 +39,6 @@ case class DocumentTableModel(_docs: IndexedSeq[Doc], properties: IndexedSeq[DPr
 
   def propertyAtColumn(c: Int): Option[DProp] = Some(c).filter(_ >= 2).map(c => properties(c-2))
 
-
   override def setValueAt(aValue: AnyRef, rowIndex: Int, columnIndex: Int) {
     val prop: DProp = propertyAtColumn(columnIndex).get
     updates.update(rowIndex, updates(rowIndex).put(prop)(aValue.asInstanceOf[prop.T]))

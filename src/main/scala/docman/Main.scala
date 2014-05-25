@@ -11,8 +11,12 @@ import javax.imageio.ImageIO
 import java.util.prefs.Preferences
 import rx._
 import rx.ops._
+import rxutils.preferences._
 import scala.swing.FileChooser.SelectionMode
 import java.util.Locale
+import rxutils.swing.{RxComboBox, RxLabel}
+import utils.StringIso
+import java.text.DateFormat
 
 /**
  * @author Thomas Geier
@@ -20,27 +24,8 @@ import java.util.Locale
  */
 
 object Main extends Reactor {
-  trait PreferenceStorable[T]{
-    def get(p: Preferences, name: String, default: T): T
-    def put(p: Preferences, name: String, value: T): Unit
-  }
-
-  case class PrefStoreString[T](read: String => T, write: T => String) extends PreferenceStorable[T]{
-    override def get(p: Preferences, name: String, default: T): T = read(p.get(name,write(default)))
-    override def put(p: Preferences, name: String, value: T): Unit = p.put(name,write(value))
-  }
-
-  implicit val prefStoreLocale = PrefStoreString[Locale](Locale.forLanguageTag, _.toLanguageTag)
-
-  def createPreferenceVar[T](prefs: Preferences, name: String, default: T)(implicit store: PreferenceStorable[T]): Var[T] = {
-    new Var[T](store.get(prefs,name,default), s"pref:$name"){
-      val saveHook = this.foreach(store.put(prefs,name,_))
-    }
-  }
 
   val preferences: Preferences = Preferences.userNodeForPackage(this.getClass)
-
-  val myLocale: Var[Locale] = createPreferenceVar(preferences, "locale", Locale.getDefault)
 
   val applicationTitle = "Docman2"
   val versionString = "1.0"
@@ -68,10 +53,14 @@ object Main extends Reactor {
   }
 
   val tableModel: DocumentTableModel = DocumentTableModel(docs(), DProp.ALL)
+  val table = new DocumentTable(tableModel)
   val docUpdate = docs.foreach(tableModel.setDocs)
 
-  class RxLabel(x: Rx[String]) extends Label(x.now){
-    val updater = x.foreach(text = _)
+  val myLocale: Var[Locale] = createPreferenceVar(preferences, "locale", Locale.getDefault)
+  val setDefaultLocale = myLocale.foreach { l =>
+    Locale.setDefault(l)
+    tableModel.fireTableDataChanged()
+    println("updating table: " + l.getDisplayCountry)
   }
 
   def showPreferenceDialog(owner: Window): Unit = {
@@ -81,13 +70,13 @@ object Main extends Reactor {
     val panel: MigPanel = new MigPanel()
     dia.contents = panel
     panel.add(new Label("DB Path"))
-    panel.add(new RxLabel(dbDirs.map(_.map(_.toString).mkString(";"))),"wrap")
+    panel.add(new RxLabel(dbDirs.map(_.map(_.toString).mkString(";"))),"split 2")
     panel.add(new Button(Action("Set"){
       val fc = new FileChooser()
       fc.fileSelectionMode = SelectionMode.DirectoriesOnly
       if (fc.showOpenDialog(panel) == FileChooser.Result.Approve)
         dbDirs.update(Set(fc.selectedFile))
-    }))
+    }),"wrap")
     dia.pack()
     dia.resizable = false
     dia.open()
@@ -110,9 +99,6 @@ object Main extends Reactor {
   }
 
   def main(args: Array[String]) {
-
-    val table = new DocumentTable(tableModel)
-
     val viewer = new PDFViewer
 
     table.getSelectionModel.addListSelectionListener(new ListSelectionListener {

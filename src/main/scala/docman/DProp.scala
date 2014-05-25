@@ -73,8 +73,8 @@ object SubjectDP extends StringProp{
 object DateDP extends DProp with LineSerializer with SwingTableProperty{
   type T = Date
 
-  val displayFormat = DateFormat.getDateInstance(DateFormat.MEDIUM)
-  val shortFormat = DateFormat.getDateInstance(DateFormat.SHORT, java.util.Locale.getDefault)
+  def displayFormat = DateFormat.getDateInstance(DateFormat.MEDIUM, java.util.Locale.forLanguageTag("de"))
+  def shortFormat = DateFormat.getDateInstance(DateFormat.SHORT, java.util.Locale.forLanguageTag("de"))
 
 
   /** The name of the property. */
