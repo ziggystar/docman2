@@ -85,16 +85,23 @@ case class AppMain(preferences: Preferences) extends Reactor {
     dia.open()
   }
 
-  val viewer: PDFViewer = new PDFViewer
-
   val table: DocumentTable = new DocumentTable(tableModel)
+
+  val selectedDocuments: Var[Set[Doc]] = Var(Set())
 
   table.getSelectionModel.addListSelectionListener(new ListSelectionListener {
     def valueChanged(e: ListSelectionEvent): Unit = {
       if(!e.getValueIsAdjusting)
-        table.getSelectedDocuments.headOption.foreach(d => viewer.setFile(Some(d.pdfFile)))
+        selectedDocuments.update(table.getSelectedDocuments.toSet)
     }
   })
+
+  val displayedPdf = selectedDocuments.map{
+    case selected if selected.size == 1 => Some(selected.head.pdfFile)
+    case _ => None
+  }
+
+  val viewer = PDFViewer.newViewer(displayedPdf)
 
   val quickSearchBar: TextField = new TextField(30)
   this.listenTo(quickSearchBar)
