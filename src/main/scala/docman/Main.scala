@@ -11,12 +11,8 @@ import javax.imageio.ImageIO
 import java.util.prefs.Preferences
 import rx._
 import rx.ops._
-import rxutils.preferences._
 import scala.swing.FileChooser.SelectionMode
-import java.util.Locale
-import rxutils.swing.{RxComboBox, RxLabel}
-import utils.StringIso
-import java.text.DateFormat
+import rxutils.swing.RxLabel
 
 /**
  * @author Thomas Geier
