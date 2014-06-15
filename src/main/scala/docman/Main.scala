@@ -105,7 +105,7 @@ case class AppMain(preferences: Preferences) extends Reactor {
     case ValueChanged(_) => table.getRowSorter.asInstanceOf[DefaultRowSorter[DocumentTableModel,Int]].setRowFilter(
       new RowFilter[DocumentTableModel,Int]{
         def include(entry: Entry[_ <: DocumentTableModel, _ <: Int]): Boolean =
-          Seq(2,3).exists(c => entry.getStringValue(c).toLowerCase.contains(quickSearchBar.text.toLowerCase))
+          (0 until entry.getModel.getColumnCount).exists(c => entry.getStringValue(c).toLowerCase.contains(quickSearchBar.text.toLowerCase))
       }
     )
   }
