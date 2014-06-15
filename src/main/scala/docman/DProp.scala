@@ -76,7 +76,6 @@ object DateDP extends DProp with LineSerializer with SwingTableProperty{
   def displayFormat = DateFormat.getDateInstance(DateFormat.MEDIUM, java.util.Locale.forLanguageTag("de"))
   def shortFormat = DateFormat.getDateInstance(DateFormat.SHORT, java.util.Locale.forLanguageTag("de"))
 
-
   /** The name of the property. */
   def name: String = "Date"
 
@@ -89,6 +88,22 @@ object DateDP extends DProp with LineSerializer with SwingTableProperty{
     override def getCellEditorValue: AnyRef = Try(Date.valueOf(getComponent.asInstanceOf[JTextField].getText))
       .recoverWith[Date]{ case _ => Try(new Date(shortFormat.parse(getComponent.asInstanceOf[JTextField].getText).getTime))}
       .getOrElse(null)
+  }
+}
+
+/** The tags may not contain newlines or commas. */
+object TagListDP extends DProp with LineSerializer with SwingTableProperty{
+  override type T = Set[String]
+  /** The name of the property. */
+  override def name: String = "Tags"
+  override protected def myserialize(t: TagListDP.T): String = t.mkString(",")
+  override protected def mydeserialize(s: String): Option[TagListDP.T] =
+    Some(s.split(',').filterNot(_.isEmpty).toSet).filterNot(_.isEmpty)
+
+  override def cellRenderer: DefaultTableCellRenderer = SwingTableProperty.stringRenderer[Set[Int]](d => d.mkString(","))
+
+  override def cellEditor: DefaultCellEditor = new DefaultCellEditor(new JTextField){
+    override def getCellEditorValue: AnyRef = mydeserialize(getComponent.asInstanceOf[JTextField].getText).getOrElse(null)
   }
 }
 
@@ -111,7 +126,7 @@ object PropertyMap{
 
 object DProp {
   import resource._
-  val ALL: IndexedSeq[DProp with LineSerializer with SwingTableProperty] = IndexedSeq(AuthorDP, SubjectDP, DateDP)
+  val ALL: IndexedSeq[DProp with LineSerializer with SwingTableProperty] = IndexedSeq(AuthorDP, SubjectDP, DateDP, TagListDP)
 
   def readPropertiesFromPDF(pd: PDDocumentInformation): PropertyMap = {
     val props = for {
