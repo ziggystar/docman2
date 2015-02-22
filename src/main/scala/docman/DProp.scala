@@ -22,9 +22,14 @@ trait DProp{
 
 trait LineSerializer{ self: DProp =>
   val serPrefix = f"${name.toUpperCase}:"
+
   final def deserialize(s: String): Option[this.T] =
     Some(s).filter(_.startsWith(serPrefix)).map(_.drop(serPrefix.size)).flatMap(mydeserialize)
-  final def serialize(x: T): String = f"$serPrefix${myserialize(x)}"
+  final def serialize(x: T): String = {
+    val string: String = myserialize(x)
+    assert(!string.contains("\n"), "serialized string must not contain newline")
+    f"$serPrefix$string"
+  }
 
   protected def mydeserialize(s: String): Option[this.T]
   protected def myserialize(t: T): String
