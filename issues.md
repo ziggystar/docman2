@@ -1,4 +1,5 @@
 # Misc
+- use version number form sbt file in gui
 
 ## Sooner
 - column: number of pages

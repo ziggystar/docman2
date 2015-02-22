@@ -1,8 +1,14 @@
 name := "docman2"
 
-version := "1.0"
+/*
+1.0.1:
+  - new Scala version 2.11.1 -> 2.11.5
+ */
+version := "1.0.1"
 
-scalaVersion := "2.11.1"
+
+
+scalaVersion := "2.11.5"
 
 //scala-swing
 libraryDependencies += "org.scala-lang.modules" %% "scala-swing" % "1.0.1"
