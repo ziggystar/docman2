@@ -7,13 +7,14 @@ name := "docman2"
 version := "1.0.1"
 
 
-
-scalaVersion := "2.11.5"
+scalaVersion := "2.11.7"
 
 //scala-swing
 libraryDependencies += "org.scala-lang.modules" %% "scala-swing" % "1.0.1"
 
 libraryDependencies += "com.scalarx" %% "scalarx" % "0.2.4"
+
+libraryDependencies += "io.reactivex" %% "rxscala" % "0.25.0"
 
 //scala-arm
 libraryDependencies += "com.jsuereth" %% "scala-arm" % "1.4"
