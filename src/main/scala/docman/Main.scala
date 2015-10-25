@@ -21,7 +21,6 @@ import rxutils.swing.RxLabel
 
 case class AppMain(preferences: Preferences) extends Reactor {
   val applicationTitle = "Docman2"
-  val versionString = "1.0"
 
   val dbDirs: Var[Set[File]] = Var(
     preferences.get("db.dirs","").split(";").map(new File(_)).filter(_.exists()).toSet,
@@ -73,7 +72,7 @@ case class AppMain(preferences: Preferences) extends Reactor {
       minimumSize = new Dimension(200,200)
       val panel = new MigPanel()
       panel.add(new Label("Version"))
-      panel.add(new Label(versionString),"wrap")
+      panel.add(new Label(VersionInfo.version),"wrap")
       contents = panel
     }
     dia.pack()
@@ -119,7 +118,7 @@ case class AppMain(preferences: Preferences) extends Reactor {
   val frame = new MainFrame{
     val icon = ImageIO.read(this.getClass.getClassLoader.getResourceAsStream("images/app_icon.png"))
     iconImage = icon
-    title = f"Docman - $versionString"
+    title = f"Docman - ${VersionInfo.version}" + (if(VersionInfo.isDefVersion) " : development mode" else "")
 
     minimumSize = new Dimension(800,600)
     private val splitPane: SplitPane = new SplitPane(Orientation.Vertical, leftPane, viewer)
@@ -154,7 +153,7 @@ case class AppMain(preferences: Preferences) extends Reactor {
 
 object Main{
   def main(args: Array[String]) {
-    val devMode = args.exists(_ == "--dev")
+    val devMode = VersionInfo.isDefVersion
     val prefs: Preferences =
       if(devMode) Preferences.userNodeForPackage(this.getClass).node("development")
       else        Preferences.userNodeForPackage(this.getClass)

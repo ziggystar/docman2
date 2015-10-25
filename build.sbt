@@ -3,9 +3,10 @@ name := "docman2"
 /*
 1.0.1:
   - new Scala version 2.11.1 -> 2.11.5
+1.1.0:
+ - migrate to rxscala
  */
-version := "1.0.1"
-
+version := "1.1.0-DEV"
 
 scalaVersion := "2.11.7"
 
@@ -26,3 +27,10 @@ libraryDependencies += "org.apache.pdfbox" % "pdfbox" % "1.8.4"
 
 //MigLayout
 libraryDependencies += "com.miglayout" % "miglayout-swing" % "4.2"
+
+//generate properties file with version
+(resourceGenerators in Compile) += Def.task {
+  val file = resourceManaged.value / "docman" / "version.properties"
+  IO.write(file, """version=""" + version.value)
+  Seq(file)
+}.taskValue

@@ -1,9 +1,7 @@
 # Misc
-- use version number form sbt file in gui
 
 ## Sooner
 - column: number of pages
-- column: tags
 - allow multiple selection (then no pdf or last one is displayed)
 - assign tag to multiple selected documents
 
