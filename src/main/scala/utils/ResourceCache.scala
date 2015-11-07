@@ -1,5 +1,6 @@
 package utils
 
+import scala.language.reflectiveCalls
 import scala.util.Try
 
 /** Manages a pool of opened resources. Currently it's hard to prevent escaping of references. Maybe the return type

@@ -24,7 +24,7 @@ trait LineSerializer{ self: DProp =>
   val serPrefix = f"${name.toUpperCase}:"
 
   final def deserialize(s: String): Option[this.T] =
-    Some(s).filter(_.startsWith(serPrefix)).map(_.drop(serPrefix.size)).flatMap(mydeserialize)
+    Some(s).filter(_.startsWith(serPrefix)).map(_.drop(serPrefix.length)).flatMap(mydeserialize)
   final def serialize(x: T): String = {
     val string: String = myserialize(x)
     assert(!string.contains("\n"), "serialized string must not contain newline")
@@ -51,7 +51,7 @@ trait SwingTableProperty{
 
 object SwingTableProperty{
   def stringRenderer[T](_f: T => String) = new DefaultTableCellRenderer{
-    val f: T => String = (t: T) => Option(t).map(_f).getOrElse(null)
+    val f: T => String = (t: T) => Option(t).map(_f).orNull
     override def getTableCellRendererComponent(table: JTable,
                                                value: scala.Any,
                                                isSelected: Boolean,
@@ -108,7 +108,7 @@ object TagListDP extends DProp with LineSerializer with SwingTableProperty{
   override def cellRenderer: DefaultTableCellRenderer = SwingTableProperty.stringRenderer[Set[Int]](d => d.mkString(","))
 
   override def cellEditor: DefaultCellEditor = new DefaultCellEditor(new JTextField){
-    override def getCellEditorValue: AnyRef = mydeserialize(getComponent.asInstanceOf[JTextField].getText).getOrElse(null)
+    override def getCellEditorValue: AnyRef = mydeserialize(getComponent.asInstanceOf[JTextField].getText).orNull
   }
 }
 
@@ -117,10 +117,9 @@ case class PropertyMap protected(m: Map[DProp,AnyRef]){
   def put[P <: DProp](p: P)(v: p.T): PropertyMap = new PropertyMap(m + (p->v))
   def ++(pm: PropertyMap): PropertyMap = new PropertyMap(m ++ pm.m)
   def serializeToLines: Iterable[String] = m.collect{
-    case (k,v) if v != null => {
+    case (k,v) if v != null =>
       val prop = k.asInstanceOf[DProp with LineSerializer]
       prop.serialize(v.asInstanceOf[prop.T])
-    }
   }
 }
 

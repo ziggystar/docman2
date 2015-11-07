@@ -26,7 +26,7 @@ libraryDependencies += "com.jsuereth" %% "scala-arm" % "1.4"
 libraryDependencies += "org.apache.pdfbox" % "pdfbox" % "1.8.4"
 
 //MigLayout
-libraryDependencies += "com.miglayout" % "miglayout-swing" % "4.2"
+libraryDependencies += "com.miglayout" % "miglayout-swing" % "5.0"
 
 //generate properties file with version
 (resourceGenerators in Compile) += Def.task {

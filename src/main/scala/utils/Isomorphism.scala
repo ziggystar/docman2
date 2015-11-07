@@ -2,6 +2,8 @@ package utils
 
 import java.util.Locale
 
+import scala.language.implicitConversions
+
 /**
  * @author Thomas Geier
  * @since 5/25/14
