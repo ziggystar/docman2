@@ -1,10 +1,15 @@
 package docman
 
+import java.awt.ComponentOrientation
 import java.io.{FilenameFilter, File}
+import jiconfont.IconCode
+import jiconfont.icons.{Typicons}
+import jiconfont.swing.IconFontSwing
+
 import scala.swing._
 import scala.swing.event.ValueChanged
 import javax.swing.event.{ListSelectionEvent, ListSelectionListener}
-import javax.swing.{RowFilter, DefaultRowSorter, JLabel}
+import javax.swing.{Action => _,_}
 import migpanel.MigPanel
 import javax.swing.RowFilter.Entry
 import javax.imageio.ImageIO
@@ -20,6 +25,34 @@ import rxutils.swing.RxLabel
  */
 
 case class AppMain(preferences: Preferences) extends Reactor {
+
+  def buildIcon(icon: IconCode, size: Int = 20): Icon =
+    IconFontSwing.buildIcon(icon, size)
+
+  object actions {
+    implicit class RichAction(val a: Action) {
+      def withIcon(icon: IconCode): Action = {
+        a.icon = buildIcon(icon,150)
+        a.smallIcon = buildIcon(icon,20)
+        a
+      }
+      def withDescription(d: String): Action = {
+        a.longDescription = d
+        a
+      }
+    }
+    val closeApplication: Action = Action("Exit"){frame.closeOperation()}
+      .withIcon(Typicons.POWER)
+
+    val openSelectedPDF: Action = Action("Open Selected PDF"){
+        table.getSelectedDocuments.headOption.foreach(selectedPDF =>
+          sys.process.Process(f"gnome-open ${selectedPDF.pdfFile.getAbsoluteFile}").run())
+      }
+      .withIcon(Typicons.EYE)
+      .withDescription("Open the PDF for the selected entry with an external viewer")
+
+    val saveAllMeta: Action = Action("Save All Meta") {tableModel.saveAllMeta()}.withIcon(Typicons.FOLDER)
+  }
   val applicationTitle = "Docman2"
 
   val dbDirs: Var[Set[File]] = Var(
@@ -109,11 +142,23 @@ case class AppMain(preferences: Preferences) extends Reactor {
     )
   }
 
+  private val toolbar: JToolBar = new JToolBar("Main Toolbar")
+
+  toolbar.add(new JButton(actions.openSelectedPDF.peer))
+  toolbar.add(new JLabel("Search",buildIcon(Typicons.ZOOM),0))
+  toolbar.add(quickSearchBar.peer)
+
   val leftPane = new MigPanel("fill","","[10]10[fill]")
-  leftPane.add(Component.wrap(new JLabel("Filter")),"")
-  leftPane.add(quickSearchBar,"wrap")
   val scrollPane: ScrollPane = new ScrollPane(Component.wrap(table))
   leftPane.add(scrollPane,"growx, pushy, span 2")
+
+  //the main split pane, with table left and pdf viewer right
+  private val splitPane: SplitPane = new SplitPane(Orientation.Vertical, leftPane, viewer)
+  splitPane.resizeWeight = 0.6
+
+  val mainPanel = new MigPanel()
+  mainPanel.add(Component.wrap(toolbar), "wrap")
+  mainPanel.add(splitPane)
 
   val frame = new MainFrame{
     val icon = ImageIO.read(this.getClass.getClassLoader.getResourceAsStream("images/app_icon.png"))
@@ -121,9 +166,7 @@ case class AppMain(preferences: Preferences) extends Reactor {
     title = f"Docman - ${VersionInfo.version}" + (if(VersionInfo.isDefVersion) " : development mode" else "")
 
     minimumSize = new Dimension(800,600)
-    private val splitPane: SplitPane = new SplitPane(Orientation.Vertical, leftPane, viewer)
-    splitPane.resizeWeight = 0.6
-    contents = splitPane
+    contents = mainPanel
 
     override def closeOperation() {
       visible = true
@@ -135,13 +178,11 @@ case class AppMain(preferences: Preferences) extends Reactor {
 
   val menuB = new MenuBar {
     contents += new Menu("File") {
-      contents += new MenuItem(Action("Save All Meta"){tableModel.saveAllMeta()})
-      contents += new MenuItem(Action("Open Selected PDF"){
-        table.getSelectedDocuments.headOption.foreach(selectedPDF =>
-          sys.process.Process(f"gnome-open ${selectedPDF.pdfFile.getAbsoluteFile}").run())
-      })
+
+      contents += new MenuItem(actions.saveAllMeta)
+      contents += new MenuItem(actions.openSelectedPDF)
       contents += new MenuItem(Action("Preferences")(showPreferenceDialog(frame)))
-      contents += new MenuItem(Action("Exit"){frame.closeOperation()})
+      contents += new MenuItem(actions.closeApplication)
     }
     contents += new Menu("About") {
       contents += new MenuItem(Action("About")(showAboutDialog(frame)))
@@ -153,6 +194,8 @@ case class AppMain(preferences: Preferences) extends Reactor {
 
 object Main{
   def main(args: Array[String]) {
+    IconFontSwing.register(Typicons.getIconFont)
+
     val devMode = VersionInfo.isDefVersion
     val prefs: Preferences =
       if(devMode) Preferences.userNodeForPackage(this.getClass).node("development")
