@@ -10,6 +10,14 @@ version := "1.1.0-DEV"
 
 scalaVersion := "2.11.8"
 
+licenses += "GPLv3" -> url("https://www.gnu.org/licenses/gpl-3.0.html")
+
+homepage := Some(url("https://github.com/ziggystar/docman2"))
+
+startYear := Some(2013)
+
+description := "Application for managing PDF files with meta data"
+
 //scala-swing
 libraryDependencies += "org.scala-lang.modules" %% "scala-swing" % "1.0.2"
 
