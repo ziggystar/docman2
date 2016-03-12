@@ -51,8 +51,11 @@ libraryDependencies += "org.apache.pdfbox" % "pdfbox" % "1.8.11"
 libraryDependencies += "com.miglayout" % "miglayout-swing" % "5.0"
 
 //generate properties file with version
-(resourceGenerators in Compile) += Def.task {
-  val file = resourceManaged.value / "docman" / "version.properties"
-  IO.write(file, """version=""" + version.value)
-  Seq(file)
-}.taskValue
+resourceGenerators in Compile <+=
+  (resourceManaged in Compile, name, version, streams) map { (dir, n, v, s) =>
+    val file = dir / "docman" / "version.properties"
+    s.log.info(s"generating version info in $file")
+    val contents = "name=%s\nversion=%s".format(n,v)
+    IO.write(file, contents)
+    Seq(file)
+  }

@@ -6,6 +6,7 @@ import resource._
 
 /** Load version string from `docman/version.properties`. */
 case object VersionInfo extends LazyLogging {
+  val versionNotFoundString: String = "unknown"
   val properties = {
     val properties = new Properties()
     //try to load resources from resource file
@@ -18,7 +19,7 @@ case object VersionInfo extends LazyLogging {
     }
     properties
   }
-  val version = properties.getProperty("version", "not found")
-  val isDefVersion = version.contains("-")
+  val version: String = properties.getProperty("version", versionNotFoundString)
+  val isDefVersion = version.contains("-") | version == versionNotFoundString
 }
 
