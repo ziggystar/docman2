@@ -97,18 +97,24 @@ object DateDP extends DProp with LineSerializer with SwingTableProperty{
 }
 
 /** The tags may not contain newlines or commas. */
-object TagListDP extends DProp with LineSerializer with SwingTableProperty{
+object TagListDP extends DProp with LineSerializer with SwingTableProperty {
   override type T = Set[String]
   /** The name of the property. */
   override def name: String = "Tags"
   override protected def myserialize(t: TagListDP.T): String = t.mkString(",")
   override protected def mydeserialize(s: String): Option[TagListDP.T] =
-    Some(s.split(',').filterNot(_.isEmpty).toSet).filterNot(_.isEmpty)
+    Some(s.split(',').map(_.trim).filterNot(_.isEmpty).toSet).filterNot(_.isEmpty)
 
-  override def cellRenderer: DefaultTableCellRenderer = SwingTableProperty.stringRenderer[Set[Int]](d => d.mkString(","))
+  override def cellRenderer: DefaultTableCellRenderer = SwingTableProperty.stringRenderer[Set[String]](d => d.mkString(","))
 
   override def cellEditor: DefaultCellEditor = new DefaultCellEditor(new JTextField){
     override def getCellEditorValue: AnyRef = mydeserialize(getComponent.asInstanceOf[JTextField].getText).orNull
+
+    override def getTableCellEditorComponent(table: JTable, value: scala.Any, isSelected: Boolean, row: Int, column: Int): Component = {
+      val c = super.getTableCellEditorComponent(table, value, isSelected, row, column).asInstanceOf[JTextField]
+      Option(value).foreach(tags => c.setText(tags.asInstanceOf[T].mkString(",")))
+      c
+    }
   }
 }
 
