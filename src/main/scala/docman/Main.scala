@@ -1,21 +1,27 @@
 package docman
 
-import java.awt.ComponentOrientation
-import java.io.{FilenameFilter, File}
+import java.awt.{Color, ComponentOrientation}
+import java.awt.image.BufferedImage
+import java.io.{File, FilenameFilter}
+
 import jiconfont.IconCode
-import jiconfont.icons.{Typicons}
+import jiconfont.icons.Typicons
 import jiconfont.swing.IconFontSwing
 
 import scala.swing._
 import scala.swing.event.ValueChanged
 import javax.swing.event.{ListSelectionEvent, ListSelectionListener}
-import javax.swing.{Action => _,_}
+import javax.swing.{Action => _, _}
+
 import migpanel.MigPanel
 import javax.swing.RowFilter.Entry
 import javax.imageio.ImageIO
 import java.util.prefs.Preferences
+
+import com.typesafe.scalalogging.slf4j.{LazyLogging, StrictLogging}
 import rx._
 import rx.ops._
+
 import scala.swing.FileChooser.SelectionMode
 import rxutils.swing.RxLabel
 
@@ -124,12 +130,12 @@ case class AppMain(preferences: Preferences) extends Reactor {
     }
   })
 
-  val displayedPdf = selectedDocuments.map{
+  val displayedPdf: Rx[Option[File]] = selectedDocuments.map{
     case selected if selected.size == 1 => Some(selected.head.pdfFile)
     case _ => None
   }
 
-  val viewer = PDFViewer.newViewer(displayedPdf)
+  val viewer: MigPanel = PDFViewer.newViewer(displayedPdf)
 
   val quickSearchBar: TextField = new TextField(30)
   this.listenTo(quickSearchBar)
@@ -145,23 +151,24 @@ case class AppMain(preferences: Preferences) extends Reactor {
   private val toolbar: JToolBar = new JToolBar("Main Toolbar")
 
   toolbar.add(new JButton(actions.openSelectedPDF.peer))
+  toolbar.addSeparator()
   toolbar.add(new JLabel("Search",buildIcon(Typicons.ZOOM),0))
   toolbar.add(quickSearchBar.peer)
 
   val leftPane = new MigPanel("fill","","[10]10[fill]")
   val scrollPane: ScrollPane = new ScrollPane(Component.wrap(table))
-  leftPane.add(scrollPane,"growx, pushy, span 2")
+  leftPane.add(scrollPane,"grow,pushy, span 2")
 
   //the main split pane, with table left and pdf viewer right
   private val splitPane: SplitPane = new SplitPane(Orientation.Vertical, leftPane, viewer)
   splitPane.resizeWeight = 0.6
 
   val mainPanel = new MigPanel()
-  mainPanel.add(Component.wrap(toolbar), "wrap")
-  mainPanel.add(splitPane)
+  mainPanel.add(Component.wrap(toolbar), "growx,wrap")
+  mainPanel.add(splitPane, "grow,push")
 
   val frame = new MainFrame{
-    val icon = ImageIO.read(this.getClass.getClassLoader.getResourceAsStream("images/app_icon.png"))
+    val icon: BufferedImage = ImageIO.read(this.getClass.getClassLoader.getResourceAsStream("images/app_icon.png"))
     iconImage = icon
     title = f"Docman - ${VersionInfo.version}" + (if(VersionInfo.isDefVersion) " : development mode" else "")
 
@@ -192,11 +199,12 @@ case class AppMain(preferences: Preferences) extends Reactor {
   frame.open()
 }
 
-object Main{
+object Main extends StrictLogging {
   def main(args: Array[String]) {
     IconFontSwing.register(Typicons.getIconFont)
 
     val devMode = VersionInfo.isDefVersion
+    if (devMode) logger.warn( "running in developer mode" )
     val prefs: Preferences =
       if(devMode) Preferences.userNodeForPackage(this.getClass).node("development")
       else        Preferences.userNodeForPackage(this.getClass)
