@@ -6,7 +6,7 @@ name := "docman2"
 1.1.0:
  - migrate to rxscala
  */
-version := "1.1.0-DEV"
+version := "1.1.0"
 
 scalaVersion := "2.11.8"
 
