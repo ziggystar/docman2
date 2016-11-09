@@ -11,8 +11,3 @@ trait RxBlock {
 
   def state: Observable[S]
 }
-
-sealed trait STree[+X]
-object SNil
-case class SCons[+H,+T](head: H, tail: STree[T])
-case class SGroup[+L,+R](left: STree[L], right: STree[R])

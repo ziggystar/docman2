@@ -16,7 +16,7 @@ case class DocumentTableModel(_docs: IndexedSeq[Doc], properties: IndexedSeq[DPr
     fireTableDataChanged()
   }
 
-  val updates = new mutable.HashMap[Int, PropertyMap] with mutable.SynchronizedMap[Int, PropertyMap]
+  val updates: mutable.Map[Int, PropertyMap] = new mutable.HashMap[Int, PropertyMap] with mutable.SynchronizedMap[Int, PropertyMap]
     .withDefaultValue(PropertyMap.empty)
 
   override def getColumnName(column: Int): String =  properties(column).name

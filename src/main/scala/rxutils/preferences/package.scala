@@ -1,8 +1,9 @@
 package rxutils
 
-import rx._
 import java.util.prefs.Preferences
-import java.util.Locale
+
+import rx.lang.scala.Subject
+import rx.lang.scala.subjects.BehaviorSubject
 import utils.StringIso
 
 /** Utilities for accessing preferences through rx variables.
@@ -21,9 +22,10 @@ package object preferences {
     override def put(p: Preferences, name: String, value: T): Unit = p.put(name,mapping.encode(value))
   }
 
-  def createPreferenceVar[T](prefs: Preferences, name: String, default: T)(implicit store: PreferenceStorable[T]): Var[T] = {
-    new rx.Var[T](store.get(prefs,name,default), s"pref:$name"){
-      val saveHook = Obs(this)(store.put(prefs,name,this()))
-    }
+  def createPreferenceVar[T](prefs: Preferences, name: String, default: T)(implicit store: PreferenceStorable[T]): Subject[T] = {
+    val s = BehaviorSubject[T]()
+    s.onNext(store.get(prefs,name,default))
+    s.foreach{ t => store.put(prefs,name,t)}
+    s
   }
 }

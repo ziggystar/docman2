@@ -21,9 +21,7 @@ description := "Application for managing PDF files with meta data"
 //scala-swing
 libraryDependencies += "org.scala-lang.modules" %% "scala-swing" % "1.0.2"
 
-libraryDependencies += "com.scalarx" %% "scalarx" % "0.2.4"
-
-libraryDependencies += "io.reactivex" %% "rxscala" % "0.26.0"
+libraryDependencies += "io.reactivex" %% "rxscala" % "0.26.3"
 
 //scala-arm
 libraryDependencies += "com.jsuereth" %% "scala-arm" % "1.4"

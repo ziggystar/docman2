@@ -1,29 +1,27 @@
 package docman
 
-import java.awt.{Color, ComponentOrientation}
 import java.awt.image.BufferedImage
 import java.io.{File, FilenameFilter}
-
-import jiconfont.IconCode
-import jiconfont.icons.Typicons
-import jiconfont.swing.IconFontSwing
-
-import scala.swing._
-import scala.swing.event.ValueChanged
+import java.util.prefs.Preferences
+import javax.imageio.ImageIO
+import javax.swing.RowFilter.Entry
 import javax.swing.event.{ListSelectionEvent, ListSelectionListener}
 import javax.swing.{Action => _, _}
 
+import com.typesafe.scalalogging.slf4j.StrictLogging
+import docman.components.TagView
+import jiconfont.IconCode
+import jiconfont.icons.Typicons
+import jiconfont.swing.IconFontSwing
 import migpanel.MigPanel
-import javax.swing.RowFilter.Entry
-import javax.imageio.ImageIO
-import java.util.prefs.Preferences
-
-import com.typesafe.scalalogging.slf4j.{LazyLogging, StrictLogging}
-import rx._
-import rx.ops._
-
-import scala.swing.FileChooser.SelectionMode
+import rx.lang.scala.{Observable, Subject}
+import rx.lang.scala.subjects.BehaviorSubject
 import rxutils.swing.RxLabel
+
+import scala.collection.immutable.IndexedSeq
+import scala.swing.FileChooser.SelectionMode
+import scala.swing._
+import scala.swing.event.ValueChanged
 
 /**
  * @author Thomas Geier
@@ -61,30 +59,27 @@ case class AppMain(preferences: Preferences) extends Reactor {
   }
   val applicationTitle = "Docman2"
 
-  val dbDirs: Var[Set[File]] = Var(
-    preferences.get("db.dirs","").split(";").map(new File(_)).filter(_.exists()).toSet,
-    name = "dbDirs"
+  val dbDirs: Subject[Set[File]] = BehaviorSubject(
+    preferences.get("db.dirs","").split(";").map(new File(_)).filter(_.exists()).toSet
   )
 
-  val saveDBDie: Obs = dbDirs.foreach{ dirs =>
+  dbDirs.foreach{ dirs =>
     preferences.put("db.dirs", dirs.mkString(";"))
   }
 
-  val pdfs: Rx[IndexedSeq[File]] = Rx(Rx.Cookie, name = "pdfs"){
-    val files = for{
-      dir <- dbDirs()
-      pdf <- dir.listFiles(new FilenameFilter { def accept(dir: File, name: String): Boolean = name.endsWith("pdf")})
-    } yield pdf
-    files.toIndexedSeq.sortBy(_.toString)
-  }
+  val pdfs: Observable[IndexedSeq[File]] = dbDirs.map { dirs =>
+      (for {
+        dir <- dirs
+        pdf <- dir.listFiles(new FilenameFilter {
+          def accept(dir: File, name: String): Boolean = name.endsWith("pdf")
+        })
+      } yield pdf).toIndexedSeq.sortBy(_.toString)
+    }
 
-  val docs: Rx[IndexedSeq[Doc]] = pdfs.map {
-    files =>
-      files map Doc.fromFile
-  }
+  val docs: Observable[IndexedSeq[Doc]] = pdfs.map { _ map Doc.fromFile }
 
-  val tableModel: DocumentTableModel = DocumentTableModel(docs(), DProp.ALL)
-  val docUpdate: Obs = docs.foreach(tableModel.setDocs)
+  val tableModel: DocumentTableModel = DocumentTableModel(docs.toBlocking.first, DProp.ALL)
+  docs.foreach(tableModel.setDocs)
 
   def showPreferenceDialog(owner: Window): Unit = {
     val dia = new Dialog(owner)
@@ -98,7 +93,7 @@ case class AppMain(preferences: Preferences) extends Reactor {
       val fc = new FileChooser()
       fc.fileSelectionMode = SelectionMode.DirectoriesOnly
       if (fc.showOpenDialog(panel) == FileChooser.Result.Approve)
-        dbDirs.update(Set(fc.selectedFile))
+        dbDirs.onNext(Set(fc.selectedFile))
     }),"wrap")
     dia.pack()
     dia.resizable = false
@@ -121,16 +116,16 @@ case class AppMain(preferences: Preferences) extends Reactor {
 
   val table: DocumentTable = new DocumentTable(tableModel)
 
-  val selectedDocuments: Var[Set[Doc]] = Var(Set())
+  val selectedDocuments = BehaviorSubject(Set[Doc]())
 
   table.getSelectionModel.addListSelectionListener(new ListSelectionListener {
     def valueChanged(e: ListSelectionEvent): Unit = {
       if(!e.getValueIsAdjusting)
-        selectedDocuments.update(table.getSelectedDocuments.toSet)
+        selectedDocuments.onNext(table.getSelectedDocuments.toSet)
     }
   })
 
-  val displayedPdf: Rx[Option[File]] = selectedDocuments.map{
+  val displayedPdf: Observable[Option[File]] = selectedDocuments.map{
     case selected if selected.size == 1 => Some(selected.head.pdfFile)
     case _ => None
   }
@@ -157,7 +152,14 @@ case class AppMain(preferences: Preferences) extends Reactor {
 
   val leftPane = new MigPanel("fill","","[10]10[fill]")
   val scrollPane: ScrollPane = new ScrollPane(Component.wrap(table))
-  leftPane.add(scrollPane,"grow,pushy, span 2")
+  leftPane.add(scrollPane,"grow,pushy, span 2,wrap")
+  val tags: rx.lang.scala.Observable[Seq[(String,Int)]] = {
+
+    val allTags: rx.lang.scala.Observable[Iterable[String]] = docs.map(_.flatMap(_.properties.get(TagListDP)).flatten)
+    allTags.map{_.groupBy(identity).toSeq.map{case (x,y) => (x,y.size)}}
+  }
+  val foo = tags.foreach(println)
+  leftPane.add(TagView(tags))
 
   //the main split pane, with table left and pdf viewer right
   private val splitPane: SplitPane = new SplitPane(Orientation.Vertical, leftPane, viewer)

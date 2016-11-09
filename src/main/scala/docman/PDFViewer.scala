@@ -1,28 +1,43 @@
 package docman
 
 import java.io.File
-import scala.swing.{Button, Dimension, Component}
+
+import scala.swing.{Button, Component, Dimension}
 import java.awt.image.BufferedImage
 import java.awt.Image
-import org.apache.pdfbox.pdmodel.{PDPage, PDDocument}
-import rx._
+
+import org.apache.pdfbox.pdmodel.{PDDocument, PDPage}
 import migpanel.MigPanel
+import rx.lang.scala._
 import rxutils.swing.RxLabel
 import utils.ResourceCache
+
+import scala.concurrent.duration.Duration
 
 /**
  * @author Thomas Geier
  * @since 12/15/13
  */
-class PDFView(val pdfFile: Rx[Option[File]], val displayedPage: Rx[Int]) extends Component {
+class PDFView(val pdfFile: Observable[Option[File]], val displayedPage: Observable[Int]) extends Component {
   minimumSize = new Dimension(300,400)
 
-  val pdfAndPage = Rx{(pdfFile(),displayedPage())}
-  val imageChanged = Obs(pdfAndPage)(this.repaint())
+  private var file: Option[File] =  None
+  private var page = 0
+  //repaint if pdf or page changes
+  pdfFile.combineLatest(pdfFile.map(_ => 0) merge displayedPage)
+    .distinct
+    .debounce(Duration("50ms")) //wait a bit until rendering the pdf
+    .foreach{
+    case (f,p) =>
+      file = f
+      page = p
+      this.repaint()
+  }
 
   override protected def paintComponent(g: swing.Graphics2D) {
     g.clearRect(g.getClipBounds.x,g.getClipBounds.y,g.getClipBounds.width,g.getClipBounds.height)
-    for(img <- pdfFile().map(PDFViewer.renderPDFPage(_,displayedPage()))){
+    file.foreach{f =>
+      val img = PDFViewer.renderPDFPage(f,page)
       val (imgW,imgH) = (img.getWidth(this.peer), img.getHeight(this.peer))
       val (cW,cH) = (this.peer.getWidth, this.peer.getHeight)
       val scale = math.min(cW / imgW.toDouble, cH / imgH.toDouble)
@@ -32,20 +47,24 @@ class PDFView(val pdfFile: Rx[Option[File]], val displayedPage: Rx[Int]) extends
 }
 
 object PDFViewer{
-  def newViewer(file: Rx[Option[File]]) = {
+  def newViewer(file: Observable[Option[File]]): MigPanel = {
     new MigPanel{
-      val maxPage = Rx{file().fold(0)(getNumPages)}
-      val page = Var{0}
-      val resetPage = Obs(file)(page.update(0))
-      val nextPage = Button("→")(if(page() < maxPage() - 1) page.update(page() + 1))
-      val prevPage = Button("←")(if(page() > 0) page.update(page() - 1))
-      val pageLabel = new RxLabel(Rx{s"${page() + 1}/${maxPage()}"})
-      val statusNext = Obs(page)(nextPage.enabled = page() < maxPage() - 1)
-      val statusPrev = Obs(page)(prevPage.enabled = page() > 0)
+      val maxPage: Observable[Int] = file.map(_.map(getNumPages).getOrElse(0)).cache
+      val nextPage: Subject[Unit] = Subject[Unit]()
+      val prevPage: Subject[Unit] = Subject[Unit]()
+      val nextPageButton: Button = Button("→")(nextPage.onNext(()))
+      val prevPageButton: Button = Button("←")(prevPage.onNext(()))
+      val page: Observable[Int] =
+        file
+          .map(_ => (nextPage.map(_ => +1) merge prevPage.map(_ => -1))
+            .scan(0)(_ + _)
+              .combineLatestWith(maxPage){case (p,max) => if(p < 0) 0 else if(p > max - 1) max - 1 else p})
+          .switch
+      val pageLabel = new RxLabel(page.combineLatest(maxPage).map{case (p,max) => s"${p+1}/$max"})
       val viewer = new PDFView(file, page)
-      add(prevPage, "split 3")
+      add(prevPageButton, "split 3")
       add(pageLabel)
-      add(nextPage, "wrap")
+      add(nextPageButton, "wrap")
       add(viewer, "grow, push")
     }
   }
