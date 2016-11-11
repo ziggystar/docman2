@@ -47,5 +47,5 @@ case class DocumentTableModel(_docs: IndexedSeq[Doc], properties: IndexedSeq[DPr
     updates.clear()
   }
 
-  def getDocAtRow(row: Int) = docs(row)
+  def getDocAtRow(row: Int): Doc = docs(row)
 }

@@ -15,7 +15,9 @@ package migpanel
 * limitations under the License.
 */
 
-import scala.swing.{Panel, Component, LayoutContainer}
+import javax.swing.JPanel
+
+import scala.swing.{Component, LayoutContainer, Panel}
 import net.miginfocom.swing.MigLayout
 
 
@@ -23,7 +25,7 @@ class MigPanel(
                 val layoutConstraints: String = "",
                 val columnConstraints: String = "",
                 val rowConstraints: String = "") extends Panel {
-  override lazy val peer = {
+  override lazy val peer: JPanel with SuperMixin = {
     val mig = new MigLayout(
       layoutConstraints,
       columnConstraints,
@@ -32,6 +34,7 @@ class MigPanel(
     new javax.swing.JPanel(mig) with SuperMixin
   }
 
+  //noinspection ScalaUnusedSymbol
   private def layoutManager = peer.getLayout.asInstanceOf[MigLayout]
 
   def add(comp: Component, constr: String = ""): Unit = peer.add(comp.peer, constr)

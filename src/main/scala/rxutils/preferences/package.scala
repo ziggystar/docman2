@@ -17,7 +17,7 @@ package object preferences {
   }
 
   implicit def prefAsString[T: StringIso] = new PreferenceStorable[T]{
-    val mapping = implicitly[StringIso[T]]
+    val mapping: StringIso[T] = implicitly[StringIso[T]]
     override def get(p: Preferences, name: String, default: T): T = mapping.decode(p.get(name,mapping.encode(default)))
     override def put(p: Preferences, name: String, value: T): Unit = p.put(name,mapping.encode(value))
   }

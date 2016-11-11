@@ -20,7 +20,7 @@ object Isomorphism{
     override def backward: (A) => B = ab.forward
   }
 
-  implicit val LocaleAsLanguageCode = StringIso[Locale](_.toLanguageTag, Locale.forLanguageTag)
+  implicit val LocaleAsLanguageCode: StringIso[Locale] = StringIso[Locale](_.toLanguageTag, Locale.forLanguageTag)
 }
 
 case class StringIso[A](encode: A => String, decode: String => A) extends Isomorphism[A,String]{

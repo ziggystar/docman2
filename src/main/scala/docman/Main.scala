@@ -14,8 +14,8 @@ import jiconfont.IconCode
 import jiconfont.icons.Typicons
 import jiconfont.swing.IconFontSwing
 import migpanel.MigPanel
-import rx.lang.scala.{Observable, Subject}
 import rx.lang.scala.subjects.BehaviorSubject
+import rx.lang.scala.{Observable, Subject}
 import rxutils.swing.RxLabel
 
 import scala.collection.immutable.IndexedSeq
@@ -158,7 +158,7 @@ case class AppMain(preferences: Preferences) extends Reactor {
     val allTags: rx.lang.scala.Observable[Iterable[String]] = docs.map(_.flatMap(_.properties.get(TagListDP)).flatten)
     allTags.map{_.groupBy(identity).toSeq.map{case (x,y) => (x,y.size)}}
   }
-  val foo = tags.foreach(println)
+  val foo: Unit = tags.foreach(println)
   leftPane.add(TagView(tags))
 
   //the main split pane, with table left and pdf viewer right
@@ -210,7 +210,7 @@ object Main extends StrictLogging {
     val prefs: Preferences =
       if(devMode) Preferences.userNodeForPackage(this.getClass).node("development")
       else        Preferences.userNodeForPackage(this.getClass)
-    val app = AppMain(
+    AppMain(
       preferences = prefs
     )
   }

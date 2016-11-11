@@ -20,6 +20,6 @@ case object VersionInfo extends LazyLogging {
     properties
   }
   val version: String = properties.getProperty("version", versionNotFoundString)
-  val isDefVersion = version.contains("-") | version == versionNotFoundString
+  val isDefVersion: Boolean = version.contains("-") | version == versionNotFoundString
 }
 
