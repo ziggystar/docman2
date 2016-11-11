@@ -1,6 +1,9 @@
-package docman
+package docman.components.table
 
 import javax.swing.table.AbstractTableModel
+
+import docman.core.{DProp, Doc, PropertyMap}
+
 import scala.collection.mutable
 
 /**

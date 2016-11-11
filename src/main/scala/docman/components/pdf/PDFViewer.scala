@@ -1,18 +1,16 @@
-package docman
+package docman.components.pdf
 
+import java.awt.Image
+import java.awt.image.BufferedImage
 import java.io.File
 
-import scala.swing.{Button, Component, Dimension}
-import java.awt.image.BufferedImage
-import java.awt.Image
-
+import docman.components.{MigPanel, RxLabel}
 import org.apache.pdfbox.pdmodel.{PDDocument, PDPage}
-import migpanel.MigPanel
 import rx.lang.scala._
-import rxutils.swing.RxLabel
-import utils.ResourceCache
+import docman.utils.ResourceCache
 
 import scala.concurrent.duration.Duration
+import scala.swing.{Button, Component, Dimension}
 
 /**
  * @author Thomas Geier

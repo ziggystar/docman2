@@ -1,7 +1,9 @@
-package docman
+package docman.components.table
 
-import javax.swing.{JTable, ListSelectionModel}
 import javax.swing.table.TableModel
+import javax.swing.{JTable, ListSelectionModel}
+
+import docman.core.{Doc, SwingTableProperty}
 
 /**
  * Swing table widget that displays a list of documents.

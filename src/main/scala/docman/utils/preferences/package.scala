@@ -1,10 +1,9 @@
-package rxutils
+package docman.utils
 
 import java.util.prefs.Preferences
 
 import rx.lang.scala.Subject
 import rx.lang.scala.subjects.BehaviorSubject
-import utils.StringIso
 
 /** Utilities for accessing preferences through rx variables.
  * @author Thomas Geier

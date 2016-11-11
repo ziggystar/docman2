@@ -1,14 +1,16 @@
-package docman
+package docman.core
 
-import javax.swing.table.DefaultTableCellRenderer
-import javax.swing.{JTable, JTextField, DefaultCellEditor}
-import java.sql.Date
-import scala.util.Try
-import java.io.{FileWriter, File}
-import scala.io.Source
-import org.apache.pdfbox.pdmodel.PDDocumentInformation
 import java.awt.Component
+import java.io.{File, FileWriter}
+import java.sql.Date
 import java.text.DateFormat
+import javax.swing.table.DefaultTableCellRenderer
+import javax.swing.{DefaultCellEditor, JTable, JTextField}
+
+import org.apache.pdfbox.pdmodel.PDDocumentInformation
+
+import scala.io.Source
+import scala.util.Try
 
 /**
  * Typed document property class.

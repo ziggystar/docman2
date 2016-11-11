@@ -1,4 +1,4 @@
-package migpanel
+package docman.components
 
 /* Copyright 2010 Trond Bjerkestrand
 *
@@ -17,8 +17,9 @@ package migpanel
 
 import javax.swing.JPanel
 
-import scala.swing.{Component, LayoutContainer, Panel}
 import net.miginfocom.swing.MigLayout
+
+import scala.swing.{Component, Panel}
 
 
 class MigPanel(

@@ -1,4 +1,4 @@
-package utils
+package docman.utils
 
 import java.util.Locale
 

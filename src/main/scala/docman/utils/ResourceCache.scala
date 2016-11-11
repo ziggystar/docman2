@@ -1,4 +1,4 @@
-package utils
+package docman.utils
 
 import scala.language.reflectiveCalls
 import scala.util.Try

@@ -1,4 +1,4 @@
-package rxutils.swing
+package docman.components
 
 import rx.lang.scala.Observable
 

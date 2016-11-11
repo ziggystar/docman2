@@ -1,9 +1,9 @@
-package docman
+package docman.core
 
-import java.io.{FileWriter, File}
+import java.io.File
+
 import org.apache.pdfbox.pdmodel.{PDDocument, PDDocumentInformation}
 import resource._
-import scala.io.Source
 
 /**
  * @param pdfFile

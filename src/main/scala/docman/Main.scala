@@ -9,14 +9,16 @@ import javax.swing.event.{ListSelectionEvent, ListSelectionListener}
 import javax.swing.{Action => _, _}
 
 import com.typesafe.scalalogging.slf4j.StrictLogging
-import docman.components.TagView
+import docman.components.pdf.PDFViewer
+import docman.components.table.{DocumentTable, DocumentTableModel}
+import docman.components.{MigPanel, RxLabel, TagView}
+import docman.core.{DProp, Doc, TagListDP}
+import docman.utils.VersionInfo
 import jiconfont.IconCode
 import jiconfont.icons.Typicons
 import jiconfont.swing.IconFontSwing
-import migpanel.MigPanel
 import rx.lang.scala.subjects.BehaviorSubject
 import rx.lang.scala.{Observable, Subject}
-import rxutils.swing.RxLabel
 
 import scala.collection.immutable.IndexedSeq
 import scala.swing.FileChooser.SelectionMode
