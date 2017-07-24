@@ -30,7 +30,7 @@ import scala.swing.event.ValueChanged
  * @since 9/8/13
  */
 
-case class AppMain(preferences: Preferences) extends Reactor {
+case class AppMain(preferences: Preferences) extends Reactor with StrictLogging {
 
   def buildIcon(icon: IconCode, size: Int = 20): Icon =
     IconFontSwing.buildIcon(icon, size)
@@ -69,12 +69,14 @@ case class AppMain(preferences: Preferences) extends Reactor {
     preferences.put("db.dirs", dirs.mkString(";"))
   }
 
-  val pdfs: Observable[IndexedSeq[File]] = dbDirs.map { dirs =>
+  def recursiveFiles(file: File): Array[File] = if(file.isDirectory){
+    file.listFiles().flatMap(recursiveFiles)
+  } else Array(file)
+
+  val pdfs: Observable[IndexedSeq[File]] = dbDirs.distinctUntilChanged.map { dirs =>
       (for {
         dir <- dirs
-        pdf <- dir.listFiles(new FilenameFilter {
-          def accept(dir: File, name: String): Boolean = name.endsWith("pdf")
-        })
+        pdf <- recursiveFiles(dir).filter(_.getName.endsWith(".pdf"))
       } yield pdf).toIndexedSeq.sortBy(_.toString)
     }
 
