@@ -4,7 +4,7 @@ import java.awt.event.ActionEvent
 import java.io.File
 
 import docman.components.MigPanel
-import javax.swing.event.TableModelEvent
+import javax.swing.event.{DocumentEvent, DocumentListener, TableModelEvent}
 import javax.swing.table.DefaultTableModel
 import javax.swing.{Action => _, _}
 import rx.lang.scala.subjects.BehaviorSubject
@@ -28,10 +28,14 @@ object ReactiveControls {
     RControl(b,obs)
   }
 
-  def textField(text: String = "", columns: Int = -1): RControl[String] = {
-    val tf = if(columns < 1) new TextField(text) else new TextField(text, columns)
-    val s = Subject[String]
-    tf.peer.addActionListener((_: ActionEvent) => s.onNext(tf.text))
+  def textField(initial: String = "", columns: Int = -1): RControl[String] = {
+    val tf = if(columns < 1) new TextField(initial) else new TextField(initial, columns)
+    val s = BehaviorSubject[String](initial)
+    tf.peer.getDocument.addDocumentListener(new DocumentListener {
+      override def removeUpdate(e: DocumentEvent): Unit = s.onNext(tf.text)
+      override def changedUpdate(e: DocumentEvent): Unit = s.onNext(tf.text)
+      override def insertUpdate(e: DocumentEvent): Unit = s.onNext(tf.text)
+    })
     RControl(tf,s)
   }
 

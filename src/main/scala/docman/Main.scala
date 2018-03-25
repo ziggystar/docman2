@@ -12,18 +12,17 @@ import docman.components.{MigPanel, TagView}
 import docman.core.{DProp, Doc, TagListDP}
 import docman.utils.VersionInfo
 import javax.imageio.ImageIO
-import javax.swing.{Action => _,_}
+import javax.swing.{Action => _, _}
 import javax.swing.RowFilter.Entry
 import javax.swing.event.ListSelectionEvent
 import jiconfont.IconCode
 import jiconfont.icons.Typicons
 import jiconfont.swing.IconFontSwing
 import rx.lang.scala.subjects.BehaviorSubject
-import rx.lang.scala.{Observable, Subject}
+import rx.lang.scala.{Observable, Subject, Subscription}
 
-import scala.collection.immutable.IndexedSeq
 import scala.swing._
-import scala.swing.event.ValueChanged
+import scala.util.Try
 
 /**
  * @author Thomas Geier
@@ -70,6 +69,7 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
     preferences.put("db.dirs", dirs.mkString(";"))
   }
 
+  /** Given a directory, list all files recursively. */
   def recursiveFiles(file: File): Array[File] = if(file.isDirectory){
     file.listFiles().flatMap(recursiveFiles)
   } else Array(file)
@@ -141,23 +141,14 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
 
   val viewer: MigPanel = PDFViewer.newViewer(displayedPdf)
 
-  val quickSearchBar: TextField = new TextField(30)
-  this.listenTo(quickSearchBar)
-  reactions += {
-    case ValueChanged(_) => table.getRowSorter.asInstanceOf[DefaultRowSorter[DocumentTableModel,Int]].setRowFilter(
-      new RowFilter[DocumentTableModel,Int]{
-        def include(entry: Entry[_ <: DocumentTableModel, _ <: Int]): Boolean =
-          (0 until entry.getModel.getColumnCount).exists(c => entry.getStringValue(c).toLowerCase.contains(quickSearchBar.text.toLowerCase))
-      }
-    )
-  }
+  val quickSearchBar: ReactiveControls.RControl[String] = ReactiveControls.textField("", 24)
 
   private val toolbar: JToolBar = new JToolBar("Main Toolbar")
 
   toolbar.add(new JButton(actions.openSelectedPDF.peer))
   toolbar.addSeparator()
   toolbar.add(new JLabel("Search",buildIcon(Typicons.ZOOM),0))
-  toolbar.add(quickSearchBar.peer)
+  toolbar.add(quickSearchBar.component.peer)
 
   val leftPane = new MigPanel("fill","","[10]10[fill]")
   val scrollPane: ScrollPane = new ScrollPane(Component.wrap(table))
@@ -167,7 +158,32 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
     val allTags: Observable[Iterable[String]] = docs.map(_.flatMap(_.properties.get(TagListDP)).flatten)
     allTags.map{_.groupBy(identity).toSeq.map{case (x,y) => (x,y.size)}}
   }
-  leftPane.add(TagView(tags))
+  private val tagView = TagView(tags)
+  leftPane.add(tagView)
+
+  private val searchParams: Observable[(String, Set[String])] = quickSearchBar.obs.combineLatest(tagView.selectecTags)
+  val rowFilter: Observable[RowFilter[DocumentTableModel,Int]] = searchParams.map{
+    case (search, selectedTags) =>
+      println("new search params: " + (search,selectedTags))
+      new RowFilter[DocumentTableModel,Int]{
+        def include(entry: Entry[_ <: DocumentTableModel, _ <: Int]): Boolean = {
+          def searchHit = search.isEmpty ||
+            (0 until entry.getModel.getColumnCount).exists { rowIndex =>
+              entry.getStringValue(rowIndex).toLowerCase.contains(search.toLowerCase)
+            }
+          def tagHit = selectedTags.isEmpty || {
+            val entryTags: Set[String] = Option(entry.getValue(entry.getModel.findColumn("Tags")).asInstanceOf[Set[String]]).getOrElse(Set[String]())
+            selectedTags.subsetOf(entryTags)
+          }
+          tagHit && searchHit
+        }
+      }
+  }
+
+  //apply row filter to out table
+  val filterSubsription: Subscription = rowFilter.subscribe { rf =>
+    table.getRowSorter.asInstanceOf[DefaultRowSorter[DocumentTableModel, Int]].setRowFilter(rf)
+  }
 
   //the main split pane, with table left and pdf viewer right
   private val splitPane: SplitPane = new SplitPane(Orientation.Vertical, leftPane, viewer)
