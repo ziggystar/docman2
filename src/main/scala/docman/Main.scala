@@ -1,118 +1,29 @@
 package docman
 
-import java.awt.event.{ComponentEvent, ComponentListener}
 import java.awt.image.BufferedImage
-import java.io.{File, FilenameFilter}
+import java.io.File
 import java.util.prefs.Preferences
 
 import com.typesafe.scalalogging.StrictLogging
 import docman.ReactiveControls.dialogs
-import javax.imageio.ImageIO
-import javax.swing.RowFilter.Entry
-import javax.swing.event.{ListSelectionEvent, ListSelectionListener, TableModelEvent, TableModelListener}
-import javax.swing.{Action => _, _}
 import docman.components.pdf.PDFViewer
 import docman.components.table.{DocumentTable, DocumentTableModel}
-import docman.components.{MigPanel, RxLabel, TagView}
+import docman.components.{MigPanel, TagView}
 import docman.core.{DProp, Doc, TagListDP}
 import docman.utils.VersionInfo
-import javax.swing.table._
+import javax.imageio.ImageIO
+import javax.swing.{Action => _,_}
+import javax.swing.RowFilter.Entry
+import javax.swing.event.ListSelectionEvent
 import jiconfont.IconCode
 import jiconfont.icons.Typicons
 import jiconfont.swing.IconFontSwing
 import rx.lang.scala.subjects.BehaviorSubject
 import rx.lang.scala.{Observable, Subject}
 
-import scala.collection.JavaConverters._
 import scala.collection.immutable.IndexedSeq
-import scala.swing.FileChooser.SelectionMode
 import scala.swing._
 import scala.swing.event.ValueChanged
-
-
-object ReactiveControls {
-
-  case class RControl[T](component: Component, obs: Observable[T])
-
-  def button(label: String): RControl[Unit] = {
-    val obs = Subject[Unit]()
-    val b = new Button(label){
-      action = new Action(s"$label"){
-        override def apply(): Unit = obs.onNext(())
-      }
-    }
-    RControl(b,obs)
-  }
-
-  object dialogs {
-    trait Dialog[T]{
-      def build(initial: T): RControl[T]
-    }
-
-    val FileList: Dialog[Seq[(File, Boolean)]] = initial => {
-      val dia = new MigPanel()
-      val tm = new DefaultTableModel(
-        new java.util.Vector(Seq("Directory", "recursive").asJavaCollection),
-        0
-      ){
-        override def isCellEditable(row: Int, column: Int): Boolean = false
-      }
-
-      initial.foreach{ row =>
-        tm.addRow(Array[AnyRef](row._1,java.lang.Boolean.valueOf(row._2)))
-      }
-      val table = new JTable(tm)
-
-
-      val buttonAdd = button("Add directory")
-      buttonAdd.obs.subscribe{ _ =>
-        val fc = new FileChooser()
-        fc.fileSelectionMode = SelectionMode.DirectoriesOnly
-        if (fc.showOpenDialog(dia) == FileChooser.Result.Approve)
-          tm.addRow(Array[AnyRef](fc.selectedFile,java.lang.Boolean.FALSE))
-      }
-      val buttonRemove = button("Remove selected")
-      buttonRemove.obs.subscribe{_ =>
-        table.getSelectedRows.sorted.reverse.foreach(tm.removeRow)
-      }
-      val buttonToggleRec = button("Toggle recursive")
-      buttonToggleRec.obs.subscribe{ _ =>
-        table.getSelectedRows
-          .foreach{ row =>
-            tm.setValueAt(!tm.getValueAt(row,1).asInstanceOf[Boolean],row,1)
-        }
-      }
-
-      dia.add(Component.wrap(new JScrollPane(table)),"span 1 3")
-      dia.add(buttonToggleRec.component, "growx, wrap")
-      dia.add(buttonAdd.component, "growx, wrap")
-      dia.add(buttonRemove.component, "growx, top, wrap")
-
-      val values = BehaviorSubject[Seq[(File,Boolean)]](initial)
-      tm.addTableModelListener((e: TableModelEvent) => {
-        val seq = (0 until tm.getRowCount).map(r =>
-          (tm.getValueAt(r, 0).asInstanceOf[File], tm.getValueAt(r, 1).asInstanceOf[Boolean])
-        )
-        values.onNext(seq)
-      })
-
-      RControl(dia,values)
-    }
-  }
-}
-
-object Test {
-  def main(args: Array[String]): Unit = {
-    val main = new MainFrame()
-    val initialFiles = Seq(
-      new File("foo") -> false,
-      new File("bar") -> true
-    )
-    val fl = dialogs.FileList.build(initialFiles)
-    main.contents = fl.component
-    main.visible = true
-  }
-}
 
 /**
  * @author Thomas Geier
@@ -128,7 +39,7 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
     implicit class RichAction(val a: Action) {
       def withIcon(icon: IconCode): Action = {
         a.icon = buildIcon(icon,size = 150)
-        a.smallIcon = buildIcon(icon,size = 20)
+        a.smallIcon = buildIcon(icon)
         a
       }
       def withDescription(d: String): Action = {
@@ -218,11 +129,9 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
 
   val selectedDocuments = BehaviorSubject(Set[Doc]())
 
-  table.getSelectionModel.addListSelectionListener(new ListSelectionListener {
-    def valueChanged(e: ListSelectionEvent): Unit = {
-      if(!e.getValueIsAdjusting)
-        selectedDocuments.onNext(table.getSelectedDocuments.toSet)
-    }
+  table.getSelectionModel.addListSelectionListener((e: ListSelectionEvent) => {
+    if (!e.getValueIsAdjusting)
+      selectedDocuments.onNext(table.getSelectedDocuments.toSet)
   })
 
   val displayedPdf: Observable[Option[File]] = selectedDocuments.map{
@@ -253,8 +162,9 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
   val leftPane = new MigPanel("fill","","[10]10[fill]")
   val scrollPane: ScrollPane = new ScrollPane(Component.wrap(table))
   leftPane.add(scrollPane,"grow,pushy, span 2,wrap")
-  val tags: rx.lang.scala.Observable[Seq[(String,Int)]] = {
-    val allTags: rx.lang.scala.Observable[Iterable[String]] = docs.map(_.flatMap(_.properties.get(TagListDP)).flatten)
+
+  val tags: Observable[Seq[(String,Int)]] = {
+    val allTags: Observable[Iterable[String]] = docs.map(_.flatMap(_.properties.get(TagListDP)).flatten)
     allTags.map{_.groupBy(identity).toSeq.map{case (x,y) => (x,y.size)}}
   }
   leftPane.add(TagView(tags))
@@ -267,7 +177,7 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
   mainPanel.add(Component.wrap(toolbar), "growx,wrap")
   mainPanel.add(splitPane, "grow,push")
 
-  val frame = new MainFrame{
+  val frame: MainFrame = new MainFrame{
     val icon: BufferedImage = ImageIO.read(this.getClass.getClassLoader.getResourceAsStream("images/app_icon.png"))
     iconImage = icon
     title = f"Docman - ${VersionInfo.version}" + (if(VersionInfo.isDefVersion) " : development mode" else "")
@@ -283,7 +193,7 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
   }
 
 
-  val menuB = new MenuBar {
+  val menuB: MenuBar = new MenuBar {
     contents += new Menu("File") {
 
       contents += new MenuItem(actions.saveAllMeta)

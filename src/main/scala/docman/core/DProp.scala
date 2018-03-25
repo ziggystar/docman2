@@ -52,7 +52,13 @@ trait SwingTableProperty{
 }
 
 object SwingTableProperty{
-  def stringRenderer[T](_f: T => String) = new DefaultTableCellRenderer{
+  def stringRenderer[T](_f: T => String): DefaultTableCellRenderer {
+    def getTableCellRendererComponent(table: JTable, value: Any, isSelected: Boolean, hasFocus: Boolean, row: Int, column: Int): Component
+
+    def setValue(value: Any): Unit
+
+    val f: T => String
+  } = new DefaultTableCellRenderer{
     val f: T => String = (t: T) => Option(t).map(_f).orNull
     override def getTableCellRendererComponent(table: JTable,
                                                value: scala.Any,
