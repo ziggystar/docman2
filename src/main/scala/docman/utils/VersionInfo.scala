@@ -2,7 +2,8 @@ package docman.utils
 
 import java.util.Properties
 
-import com.typesafe.scalalogging.slf4j.LazyLogging
+import com.typesafe.scalalogging.LazyLogging
+
 
 /** Load version string from `docman/version.properties`. */
 case object VersionInfo extends LazyLogging {

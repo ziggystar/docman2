@@ -3,12 +3,12 @@ package docman
 import java.awt.image.BufferedImage
 import java.io.{File, FilenameFilter}
 import java.util.prefs.Preferences
+
+import com.typesafe.scalalogging.StrictLogging
 import javax.imageio.ImageIO
 import javax.swing.RowFilter.Entry
 import javax.swing.event.{ListSelectionEvent, ListSelectionListener}
 import javax.swing.{Action => _, _}
-
-import com.typesafe.scalalogging.slf4j.StrictLogging
 import docman.components.pdf.PDFViewer
 import docman.components.table.{DocumentTable, DocumentTableModel}
 import docman.components.{MigPanel, RxLabel, TagView}
@@ -38,8 +38,8 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
   object actions {
     implicit class RichAction(val a: Action) {
       def withIcon(icon: IconCode): Action = {
-        a.icon = buildIcon(icon,150)
-        a.smallIcon = buildIcon(icon,20)
+        a.icon = buildIcon(icon,size = 150)
+        a.smallIcon = buildIcon(icon,size = 20)
         a
       }
       def withDescription(d: String): Action = {
@@ -158,11 +158,9 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
   val scrollPane: ScrollPane = new ScrollPane(Component.wrap(table))
   leftPane.add(scrollPane,"grow,pushy, span 2,wrap")
   val tags: rx.lang.scala.Observable[Seq[(String,Int)]] = {
-
     val allTags: rx.lang.scala.Observable[Iterable[String]] = docs.map(_.flatMap(_.properties.get(TagListDP)).flatten)
     allTags.map{_.groupBy(identity).toSeq.map{case (x,y) => (x,y.size)}}
   }
-  val foo: Unit = tags.foreach(println)
   leftPane.add(TagView(tags))
 
   //the main split pane, with table left and pdf viewer right

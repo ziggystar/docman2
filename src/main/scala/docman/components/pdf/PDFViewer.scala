@@ -4,11 +4,12 @@ import java.awt.Image
 import java.awt.image.BufferedImage
 import java.io.File
 
-import com.typesafe.scalalogging.slf4j.StrictLogging
+import com.typesafe.scalalogging.StrictLogging
 import docman.components.{MigPanel, RxLabel}
 import org.apache.pdfbox.pdmodel.{PDDocument, PDPage}
 import rx.lang.scala._
 import docman.utils.ResourceCache
+import org.apache.pdfbox.rendering.{ImageType, PDFRenderer}
 
 import scala.concurrent.duration.Duration
 import scala.swing.{Button, Component, Dimension}
@@ -74,8 +75,8 @@ object PDFViewer extends StrictLogging {
   def getNumPages(file: File): Int = documentCache.get(file)(_.getNumberOfPages).getOrElse(0)
 
   def renderPDFPage(file: File, page: Int, dpi: Int = 90): Image = {
-    documentCache.get(file)(pd =>
-      pd.getDocumentCatalog.getAllPages.get(page).asInstanceOf[PDPage].convertToImage(BufferedImage.TYPE_BYTE_GRAY, dpi)
-    ).getOrElse(new BufferedImage(1,1,BufferedImage.TYPE_BYTE_GRAY))
+    documentCache.get(file) { pd =>
+      new PDFRenderer(pd).renderImageWithDPI(page,dpi,ImageType.RGB)
+    }.getOrElse(new BufferedImage(1,1,BufferedImage.TYPE_BYTE_GRAY))
   }
 }

@@ -2,6 +2,8 @@ package docman.components
 
 
 import java.awt.Color
+import javax.swing.BorderFactory
+import javax.swing.border.BevelBorder
 
 import rx.lang.scala._
 
@@ -15,8 +17,8 @@ case class TagView(tags: Observable[Seq[(String,Int)]], maxTags: Int = 10) exten
 
   def makeLabel(tag: String, count: Int): Label = {
     val l = new Label(tag)
-    l.peer.getInsets.set(5,5,5,5)
-    l.background = Color.DARK_GRAY
+    l.peer.setBorder(BorderFactory.createBevelBorder(BevelBorder.RAISED))
+    l.peer.getInsets.set(9,9,9,9)
     l
   }
 

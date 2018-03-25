@@ -10,7 +10,7 @@ import scala.util.Try
 class ResourceCache[K,V <: {def close(): Unit}](val open: K => V, val size: Int = 3) {
   private val cache = new java.util.concurrent.ConcurrentHashMap[K,Try[V]]
   private val lastAccessed =  new java.util.concurrent.ConcurrentHashMap[K,Long]
-  @volatile private var lastTime = 0
+  @volatile private var lastTime = 0L
 
   def get[A](k: K)(f: V => A): Try[A] = this.synchronized{
     val existingKey: Option[K] = Some(k).filter(cache.containsKey)
