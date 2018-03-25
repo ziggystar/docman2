@@ -1,29 +1,118 @@
 package docman
 
+import java.awt.event.{ComponentEvent, ComponentListener}
 import java.awt.image.BufferedImage
 import java.io.{File, FilenameFilter}
 import java.util.prefs.Preferences
 
 import com.typesafe.scalalogging.StrictLogging
+import docman.ReactiveControls.dialogs
 import javax.imageio.ImageIO
 import javax.swing.RowFilter.Entry
-import javax.swing.event.{ListSelectionEvent, ListSelectionListener}
+import javax.swing.event.{ListSelectionEvent, ListSelectionListener, TableModelEvent, TableModelListener}
 import javax.swing.{Action => _, _}
 import docman.components.pdf.PDFViewer
 import docman.components.table.{DocumentTable, DocumentTableModel}
 import docman.components.{MigPanel, RxLabel, TagView}
 import docman.core.{DProp, Doc, TagListDP}
 import docman.utils.VersionInfo
+import javax.swing.table._
 import jiconfont.IconCode
 import jiconfont.icons.Typicons
 import jiconfont.swing.IconFontSwing
 import rx.lang.scala.subjects.BehaviorSubject
 import rx.lang.scala.{Observable, Subject}
 
+import scala.collection.JavaConverters._
 import scala.collection.immutable.IndexedSeq
 import scala.swing.FileChooser.SelectionMode
 import scala.swing._
 import scala.swing.event.ValueChanged
+
+
+object ReactiveControls {
+
+  case class RControl[T](component: Component, obs: Observable[T])
+
+  def button(label: String): RControl[Unit] = {
+    val obs = Subject[Unit]()
+    val b = new Button(label){
+      action = new Action(s"$label"){
+        override def apply(): Unit = obs.onNext(())
+      }
+    }
+    RControl(b,obs)
+  }
+
+  object dialogs {
+    trait Dialog[T]{
+      def build(initial: T): RControl[T]
+    }
+
+    val FileList: Dialog[Seq[(File, Boolean)]] = initial => {
+      val dia = new MigPanel()
+      val tm = new DefaultTableModel(
+        new java.util.Vector(Seq("Directory", "recursive").asJavaCollection),
+        0
+      ){
+        override def isCellEditable(row: Int, column: Int): Boolean = false
+      }
+
+      initial.foreach{ row =>
+        tm.addRow(Array[AnyRef](row._1,java.lang.Boolean.valueOf(row._2)))
+      }
+      val table = new JTable(tm)
+
+
+      val buttonAdd = button("Add directory")
+      buttonAdd.obs.subscribe{ _ =>
+        val fc = new FileChooser()
+        fc.fileSelectionMode = SelectionMode.DirectoriesOnly
+        if (fc.showOpenDialog(dia) == FileChooser.Result.Approve)
+          tm.addRow(Array[AnyRef](fc.selectedFile,java.lang.Boolean.FALSE))
+      }
+      val buttonRemove = button("Remove selected")
+      buttonRemove.obs.subscribe{_ =>
+        table.getSelectedRows.sorted.reverse.foreach(tm.removeRow)
+      }
+      val buttonToggleRec = button("Toggle recursive")
+      buttonToggleRec.obs.subscribe{ _ =>
+        table.getSelectedRows
+          .foreach{ row =>
+            tm.setValueAt(!tm.getValueAt(row,1).asInstanceOf[Boolean],row,1)
+        }
+      }
+
+      dia.add(Component.wrap(new JScrollPane(table)),"span 1 3")
+      dia.add(buttonToggleRec.component, "growx, wrap")
+      dia.add(buttonAdd.component, "growx, wrap")
+      dia.add(buttonRemove.component, "growx, top, wrap")
+
+      val values = BehaviorSubject[Seq[(File,Boolean)]](initial)
+      tm.addTableModelListener((e: TableModelEvent) => {
+        val seq = (0 until tm.getRowCount).map(r =>
+          (tm.getValueAt(r, 0).asInstanceOf[File], tm.getValueAt(r, 1).asInstanceOf[Boolean])
+        )
+        values.onNext(seq)
+      })
+
+      RControl(dia,values)
+    }
+  }
+}
+
+object Test {
+  def main(args: Array[String]): Unit = {
+    val main = new MainFrame()
+    val initialFiles = Seq(
+      new File("foo") -> false,
+      new File("bar") -> true
+    )
+    val fl = dialogs.FileList.build(initialFiles)
+    main.contents = fl.component
+    main.visible = true
+  }
+}
 
 /**
  * @author Thomas Geier
@@ -59,6 +148,7 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
 
     val saveAllMeta: Action = Action("Save All Meta") {tableModel.saveAllMeta()}.withIcon(Typicons.FOLDER)
   }
+
   val applicationTitle = "Docman2"
 
   val dbDirs: Subject[Set[File]] = BehaviorSubject(
@@ -91,14 +181,20 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
     dia.minimumSize = new Dimension(600,400)
     val panel: MigPanel = new MigPanel()
     dia.contents = panel
-    panel.add(new Label("DB Path"))
-    panel.add(new RxLabel(dbDirs.map(_.map(_.toString).mkString(";"))),"split 2")
-    panel.add(new Button(Action("Set"){
-      val fc = new FileChooser()
-      fc.fileSelectionMode = SelectionMode.DirectoriesOnly
-      if (fc.showOpenDialog(panel) == FileChooser.Result.Approve)
-        dbDirs.onNext(Set(fc.selectedFile))
-    }),"wrap")
+    val dirList = dialogs.FileList.build(dbDirs.toBlocking.first.toSeq.map(_ -> false))
+
+    panel.add(new Label("Library Paths"), "wrap")
+    panel.add(dirList.component, "wrap")
+    val btnOk = ReactiveControls.button("Ok")
+    val btnCancel = ReactiveControls.button("Cancel")
+    panel.add(btnOk.component, "tag ok, split 2")
+    panel.add(btnCancel.component, "tag cancel")
+    dirList.obs.sample(btnOk.obs).subscribe{dirs =>
+      println("saving config " + dirs.mkString(";"))
+      dbDirs.onNext(dirs.map(_._1).toSet)
+      dia.close()
+    }
+    btnCancel.obs.subscribe(_ => dia.close())
     dia.pack()
     dia.resizable = false
     dia.open()
