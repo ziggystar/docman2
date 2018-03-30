@@ -1,4 +1,4 @@
-package docman.components
+package docman.gui
 
 /* Copyright 2010 Trond Bjerkestrand
 *
@@ -16,7 +16,6 @@ package docman.components
 */
 
 import javax.swing.JPanel
-
 import net.miginfocom.swing.MigLayout
 
 import scala.swing.{Component, Panel}

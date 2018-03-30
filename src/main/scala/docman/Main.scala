@@ -4,12 +4,14 @@ import java.awt.image.BufferedImage
 import java.io.File
 import java.util.prefs.Preferences
 
+import ch.qos.logback.core.net.ssl.ConfigurableSSLServerSocketFactory
 import com.typesafe.scalalogging.StrictLogging
-import docman.ReactiveControls.dialogs
-import docman.components.pdf.PDFViewer
-import docman.components.table.{DocumentTable, DocumentTableModel}
-import docman.components.{MigPanel, TagView}
+import docman.gui.pdf.PDFViewer
+import docman.gui.table.{DocumentTable, DocumentTableModel}
 import docman.core.{DProp, Doc, TagListDP}
+import docman.gui.dialogs.PreferenceDialog
+import docman.gui.rxutils._
+import docman.gui.{MigPanel, TagView}
 import docman.utils.VersionInfo
 import javax.imageio.ImageIO
 import javax.swing.{Action => _, _}
@@ -21,8 +23,8 @@ import jiconfont.swing.IconFontSwing
 import rx.lang.scala.subjects.BehaviorSubject
 import rx.lang.scala.{Observable, Subject, Subscription}
 
+import scala.swing
 import scala.swing._
-import scala.util.Try
 
 /**
  * @author Thomas Geier
@@ -30,6 +32,10 @@ import scala.util.Try
  */
 
 case class AppMain(preferences: Preferences) extends Reactor with StrictLogging {
+
+  case class SearchDir(dir: File, recursive: Boolean)
+  case class Config(searchDirs: Seq[SearchDir] = Seq())
+
 
   def buildIcon(icon: IconCode, size: Int = 20): Icon =
     IconFontSwing.buildIcon(icon, size)
@@ -61,6 +67,7 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
 
   val applicationTitle = "Docman2"
 
+
   val dbDirs: Subject[Set[File]] = BehaviorSubject(
     preferences.get("db.dirs","").split(";").map(new File(_)).filter(_.exists()).toSet
   )
@@ -87,17 +94,17 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
   docs.foreach(tableModel.setDocs)
 
   def showPreferenceDialog(owner: Window): Unit = {
-    val dia = new Dialog(owner)
+    val dia = new swing.Dialog(owner)
     dia.title = s"$applicationTitle - Preferences"
     dia.minimumSize = new Dimension(600,400)
     val panel: MigPanel = new MigPanel()
     dia.contents = panel
-    val dirList = dialogs.FileList.build(dbDirs.toBlocking.first.toSeq.map(_ -> false))
+    val dirList = PreferenceDialog.build(dbDirs.toBlocking.first.toSeq.map(_ -> false))
 
     panel.add(new Label("Library Paths"), "wrap")
     panel.add(dirList.component, "wrap")
-    val btnOk = ReactiveControls.button("Ok")
-    val btnCancel = ReactiveControls.button("Cancel")
+    val btnOk = button("Ok")
+    val btnCancel = button("Cancel")
     panel.add(btnOk.component, "tag ok, split 2")
     panel.add(btnCancel.component, "tag cancel")
     dirList.obs.sample(btnOk.obs).subscribe{dirs =>
@@ -112,7 +119,7 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
   }
 
   def showAboutDialog(owner: Window): Unit = {
-    val dia = new Dialog(owner){
+    val dia = new swing.Dialog(owner){
       title = s"$applicationTitle - About"
       minimumSize = new Dimension(200,200)
       val panel = new MigPanel()
@@ -141,7 +148,7 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
 
   val viewer: MigPanel = PDFViewer.newViewer(displayedPdf)
 
-  val quickSearchBar: ReactiveControls.RControl[String] = ReactiveControls.textField("", 24)
+  val quickSearchBar: RControl[String] = textField("", 24)
 
   private val toolbar: JToolBar = new JToolBar("Main Toolbar")
 
@@ -164,7 +171,6 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
   private val searchParams: Observable[(String, Set[String])] = quickSearchBar.obs.combineLatest(tagView.selectecTags)
   val rowFilter: Observable[RowFilter[DocumentTableModel,Int]] = searchParams.map{
     case (search, selectedTags) =>
-      println("new search params: " + (search,selectedTags))
       new RowFilter[DocumentTableModel,Int]{
         def include(entry: Entry[_ <: DocumentTableModel, _ <: Int]): Boolean = {
           def searchHit = search.isEmpty ||

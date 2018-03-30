@@ -1,4 +1,4 @@
-package docman.components.table
+package docman.gui.table
 
 import javax.swing.table.TableModel
 import javax.swing.{JTable, ListSelectionModel}

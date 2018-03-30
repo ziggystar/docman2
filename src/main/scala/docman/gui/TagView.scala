@@ -1,12 +1,11 @@
-package docman.components
-
+package docman.gui
 
 import java.awt.Color
 import java.awt.event.{MouseAdapter, MouseEvent}
 
 import javax.swing.BorderFactory
 import javax.swing.border.BevelBorder
-import rx.lang.scala._
+import rx.lang.scala.{Observable, Subject, Subscription}
 
 import scala.swing.{FlowPanel, Label}
 

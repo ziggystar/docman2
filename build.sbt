@@ -5,8 +5,11 @@ name := "docman2"
   - new Scala version 2.11.1 -> 2.11.5
 1.1.0:
  - migrate to rxscala
+2.0.0:
+ - search multiple directories
+ - display tags; click them for filtering
  */
-version := "1.1.0-DEV"
+version := "2.0.0"
 
 scalaVersion := "2.12.5"
 
@@ -21,15 +24,24 @@ description := "Application for managing PDF files with meta data"
 //scala-swing
 libraryDependencies += "org.scala-lang.modules" %% "scala-swing" % "2.0.2"
 
+//MigLayout
+libraryDependencies += "com.miglayout" % "miglayout-swing" % "5.1"
+
 libraryDependencies += "io.reactivex" %% "rxscala" % "0.26.5"
 
 //scala-arm
 libraryDependencies += "com.jsuereth" %% "scala-arm" % "2.0"
 
+//configration
+libraryDependencies += "com.github.pureconfig" %% "pureconfig" % "0.9.1"
+
 //icons
 libraryDependencies += "com.github.jiconfont" % "jiconfont-typicons" % "2.0.7.0"
 
 libraryDependencies += "com.github.jiconfont" % "jiconfont-swing" % "1.0.1"
+
+//configuration
+libraryDependencies += "com.github.pureconfig" %% "pureconfig" % "0.9.1"
 
 //logging
 libraryDependencies += "com.typesafe.scala-logging" % "scala-logging_2.12" % "3.8.0"
@@ -41,8 +53,6 @@ libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3"
 //pdfbox
 libraryDependencies += "org.apache.pdfbox" % "pdfbox" % "2.0.8"
 
-//MigLayout
-libraryDependencies += "com.miglayout" % "miglayout-swing" % "5.1"
 
 //generate properties file with version
 resourceGenerators in Compile <+=
