@@ -1,21 +1,26 @@
 package docman.gui.dialogs
 
+import java.awt.event.ComponentListener
 import java.io.File
 
+import com.typesafe.scalalogging.StrictLogging
+import docman.config.{Config, SearchDir}
 import docman.gui.MigPanel
 import docman.gui.rxutils._
 import javax.swing.event.TableModelEvent
 import javax.swing.{JScrollPane, JTable}
 import javax.swing.table.DefaultTableModel
+import rx.lang.scala.{Observable, Subject}
 import rx.lang.scala.subjects.BehaviorSubject
 
 import scala.collection.JavaConverters._
 import scala.swing._
 import scala.swing.FileChooser.SelectionMode
+import scala.swing.event.WindowClosed
 
-case object PreferenceDialog extends RXDialog[Seq[(File, Boolean)]] {
+case object PreferenceDialog extends RXDialog[Config] with StrictLogging {
 
-  override def build(initial: Seq[(File, Boolean)]): RControl[Seq[(File, Boolean)]] = {
+  override def build(initial: Config): RControl[Config] = {
     val dia = new MigPanel()
     val tm = new DefaultTableModel(
       new java.util.Vector(Seq("Directory", "recursive").asJavaCollection),
@@ -24,11 +29,10 @@ case object PreferenceDialog extends RXDialog[Seq[(File, Boolean)]] {
       override def isCellEditable(row: Int, column: Int): Boolean = false
     }
 
-    initial.foreach { row =>
-      tm.addRow(Array[AnyRef](row._1, java.lang.Boolean.valueOf(row._2)))
+    initial.searchDirs.foreach { row =>
+      tm.addRow(Array[AnyRef](row.dir, java.lang.Boolean.valueOf(row.recursive)))
     }
     val table = new JTable(tm)
-
 
     val buttonAdd = button("Add directory")
     buttonAdd.obs.subscribe { _ =>
@@ -54,14 +58,44 @@ case object PreferenceDialog extends RXDialog[Seq[(File, Boolean)]] {
     dia.add(buttonAdd.component, "growx, wrap")
     dia.add(buttonRemove.component, "growx, top, wrap")
 
-    val values = BehaviorSubject[Seq[(File, Boolean)]](initial)
+    val values = BehaviorSubject[Config](initial)
     tm.addTableModelListener((_: TableModelEvent) => {
       val seq = (0 until tm.getRowCount).map(r =>
-        (tm.getValueAt(r, 0).asInstanceOf[File], tm.getValueAt(r, 1).asInstanceOf[Boolean])
+        SearchDir(tm.getValueAt(r, 0).asInstanceOf[File], tm.getValueAt(r, 1).asInstanceOf[Boolean])
       )
-      values.onNext(seq)
+      values.onNext(Config(seq))
     })
-
     RControl(dia, values)
+  }
+
+  def show(owner: Window, current: Config): Observable[Config] = {
+    logger.info("opening prefs with " + current)
+    val dia = new swing.Dialog(owner)
+    dia.title = s"${owner.peer.getRootPane.getUIClassID} - Preferences"
+    dia.minimumSize = new Dimension(600,400)
+    val panel: MigPanel = new MigPanel()
+    dia.contents = panel
+    val dirList = PreferenceDialog.build(current)
+
+    panel.add(new Label("Library Paths"), "wrap")
+    panel.add(dirList.component, "wrap")
+    val btnOk = button("Ok")
+    val btnCancel = button("Cancel")
+    panel.add(btnOk.component, "tag ok, split 2")
+    panel.add(btnCancel.component, "tag cancel")
+
+    val closeO = Subject[Unit]()
+    val closeSubscription = (btnCancel.obs merge btnOk.obs)
+      .subscribe{ _ => {
+        dia.close()
+        closeO.onNext(())
+        closeO.onCompleted()
+      }
+      }
+    dia.pack()
+    dia.resizable = false
+    dia.open()
+
+    dirList.obs.takeUntil(btnOk.obs).last
   }
 }

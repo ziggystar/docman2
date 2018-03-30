@@ -2,12 +2,30 @@ package docman.gui
 
 import javax.swing.event.{DocumentEvent, DocumentListener}
 import javax.swing.{Action => _, _}
+import jiconfont.IconCode
+import jiconfont.swing.IconFontSwing
 import rx.lang.scala.subjects.BehaviorSubject
 import rx.lang.scala.{Observable, Subject}
 
 import scala.swing.{Action, Button, Label, TextField}
 
 package object rxutils {
+
+  def buildIcon(icon: IconCode, size: Int = 20): Icon =
+    IconFontSwing.buildIcon(icon, size)
+
+  implicit class RichAction(val a: Action) {
+
+    def withIcon(icon: IconCode): Action = {
+      a.icon = buildIcon(icon,size = 150)
+      a.smallIcon = buildIcon(icon)
+      a
+    }
+    def withDescription(d: String): Action = {
+      a.longDescription = d
+      a
+    }
+  }
 
   def button(label: String): RControl[Unit] = {
     val obs = Subject[Unit]()

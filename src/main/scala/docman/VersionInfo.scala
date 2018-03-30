@@ -1,4 +1,4 @@
-package docman.utils
+package docman
 
 import java.util.Properties
 

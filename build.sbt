@@ -40,8 +40,8 @@ libraryDependencies += "com.github.jiconfont" % "jiconfont-typicons" % "2.0.7.0"
 
 libraryDependencies += "com.github.jiconfont" % "jiconfont-swing" % "1.0.1"
 
-//configuration
-libraryDependencies += "com.github.pureconfig" %% "pureconfig" % "0.9.1"
+//configuration serialization
+libraryDependencies += "com.lihaoyi" %% "upickle" % "0.6.2"
 
 //logging
 libraryDependencies += "com.typesafe.scala-logging" % "scala-logging_2.12" % "3.8.0"
