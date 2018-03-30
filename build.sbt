@@ -8,8 +8,10 @@ name := "docman2"
 2.0.0:
  - search multiple directories
  - display tags; click them for filtering
+2.0.1:
+ - fix: most frequent tags are NOT displayed
  */
-version := "2.0.0"
+version := "2.0.1"
 
 scalaVersion := "2.12.5"
 
