@@ -55,13 +55,9 @@ libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3"
 //pdfbox
 libraryDependencies += "org.apache.pdfbox" % "pdfbox" % "2.0.8"
 
-
-//generate properties file with version
-resourceGenerators in Compile <+=
-  (resourceManaged in Compile, name, version, streams) map { (dir, n, v, s) =>
-    val file = dir / "docman" / "version.properties"
-    s.log.info(s"generating version info in $file")
-    val contents = "name=%s\nversion=%s".format(n,v)
-    IO.write(file, contents)
-    Seq(file)
-  }
+lazy val root = (project in file(".")).
+  enablePlugins(BuildInfoPlugin).
+  settings(
+      buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
+      buildInfoPackage := "docman"
+  )
