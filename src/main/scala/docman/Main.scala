@@ -117,14 +117,14 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
 
   val leftPane = new MigPanel("fill","","[10]10[fill]")
   val scrollPane: ScrollPane = new ScrollPane(Component.wrap(table))
-  leftPane.add(scrollPane,"grow,pushy, span 2,wrap")
+  leftPane.add(scrollPane,"grow, pushy, wrap")
 
   val tags: Observable[Seq[(String,Int)]] = {
     val allTags: Observable[Iterable[String]] = docs.map(_.flatMap(_.properties.get(TagListDP)).flatten)
     allTags.map{_.groupBy(identity).toSeq.map{case (x,y) => (x,y.size)}}
   }
   private val tagView = TagView(tags)
-  leftPane.add(tagView)
+  leftPane.add(tagView, "")
 
   private val searchParams: Observable[(String, Set[String])] = quickSearchBar.obs.combineLatest(tagView.selectecTags)
   val rowFilter: Observable[RowFilter[DocumentTableModel,Int]] = searchParams.map{
