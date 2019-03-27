@@ -42,6 +42,12 @@ libraryDependencies += "com.github.jiconfont" % "jiconfont-typicons" % "2.0.7.0"
 
 libraryDependencies += "com.github.jiconfont" % "jiconfont-swing" % "1.0.1"
 
+libraryDependencies += "org.typelevel" %% "cats-effect" % "1.2.0"
+
+resolvers += Resolver.sonatypeRepo("releases")
+
+addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.9")
+
 //configuration serialization
 libraryDependencies += "com.lihaoyi" %% "upickle" % "0.6.2"
 
