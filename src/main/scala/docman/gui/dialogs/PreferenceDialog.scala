@@ -1,6 +1,5 @@
 package docman.gui.dialogs
 
-import java.awt.event.ComponentListener
 import java.io.File
 
 import com.typesafe.scalalogging.StrictLogging
@@ -8,15 +7,14 @@ import docman.config.{Config, SearchDir}
 import docman.gui.MigPanel
 import docman.gui.rxutils._
 import javax.swing.event.TableModelEvent
-import javax.swing.{JScrollPane, JTable}
 import javax.swing.table.DefaultTableModel
-import rx.lang.scala.{Observable, Subject}
+import javax.swing.{JScrollPane, JTable}
 import rx.lang.scala.subjects.BehaviorSubject
+import rx.lang.scala.{Observable, Subject}
 
 import scala.collection.JavaConverters._
-import scala.swing._
 import scala.swing.FileChooser.SelectionMode
-import scala.swing.event.WindowClosed
+import scala.swing._
 
 case object PreferenceDialog extends RXDialog[Config] with StrictLogging {
 

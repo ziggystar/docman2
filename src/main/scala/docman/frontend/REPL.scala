@@ -4,7 +4,7 @@ import java.io.{File, InputStream, OutputStream, PrintStream}
 
 import cats.data.EitherT
 import cats.effect.IO
-import docman.core.DocAlgebra
+import docman.core.RODocumentStore
 import docman.engine.SideCarRO
 import rx.lang.scala.{Observable, Observer, Subject, Subscription}
 import Observable._
