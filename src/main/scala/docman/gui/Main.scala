@@ -2,12 +2,16 @@ package docman.gui
 
 import java.awt.image.BufferedImage
 import java.io.File
+import java.sql.Date
 import java.util.prefs.Preferences
 
+import cats.data.EitherT
+import cats.effect.IO
 import com.typesafe.scalalogging.StrictLogging
 import docman.VersionInfo
 import docman.config.Config
-import docman.core.{DProp, Doc, TagListDP}
+import docman.core.{AuthorDP, DProp, DateDP, DirectSidecarPersistable, Doc, Document, Persistable, PropertyMap, RODocumentStore, SubjectDP, TagListDP}
+import docman.engine.SideCarRO
 import docman.gui.dialogs.PreferenceDialog
 import docman.gui.table.{DocumentTable, DocumentTableModel}
 import docman.utils.swing.pdf.PDFViewer
@@ -64,17 +68,14 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
     file.listFiles().flatMap(recursiveFiles)
   } else Array(file)
 
-  val docs: Observable[IndexedSeq[Doc]] = config.distinctUntilChanged
-    .map { conf =>
-      (for {
-        dir <- conf.searchDirs if dir.dir.exists() && dir.dir.isDirectory
-        file <- if(dir.recursive) recursiveFiles(dir.dir) else dir.dir.listFiles()
-        if file.getName.endsWith(".pdf")
-      } yield file).toIndexedSeq.sortBy(_.toString)
-    }
-    .map { _ map Doc.fromFile }
+  val backend: Observable[BackendAdapter] =
+    config.distinctUntilChanged
+      .map(c => new SideCarRO(c.searchDirs.map(sd => sd.dir -> sd.recursive)))
+      .map(BackendAdapter)
 
-  val tableModel: DocumentTableModel = DocumentTableModel(docs.toBlocking.first, DProp.ALL)
+  val docs: Observable[IndexedSeq[Doc]] = backend.flatMap(_.docStream())
+
+  val tableModel: DocumentTableModel = DocumentTableModel(docs.toBlocking.first, DProp.ALL, DirectSidecarPersistable.docPersistable)
   docs.foreach(tableModel.setDocs)
 
   def showAboutDialog(owner: Window): Unit = {
@@ -130,23 +131,23 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
   private val searchParams: Observable[(String, Set[String])] = quickSearchBar.obs.combineLatest(tagView.selectecTags)
   val rowFilter: Observable[RowFilter[DocumentTableModel,Int]] = searchParams.map{
     case (search, selectedTags) =>
-      new RowFilter[DocumentTableModel,Int]{
-        def include(entry: Entry[_ <: DocumentTableModel, _ <: Int]): Boolean = {
-          def searchHit = search.isEmpty ||
-            (0 until entry.getModel.getColumnCount).exists { rowIndex =>
-              entry.getStringValue(rowIndex).toLowerCase.contains(search.toLowerCase)
-            }
-          def tagHit = selectedTags.isEmpty || {
-            val entryTags: Set[String] = Option(entry.getValue(entry.getModel.findColumn("Tags")).asInstanceOf[Set[String]]).getOrElse(Set[String]())
-            selectedTags.subsetOf(entryTags)
+      (entry: Entry[_ <: DocumentTableModel, _ <: Int]) => {
+        def searchHit = search.isEmpty ||
+          (0 until entry.getModel.getColumnCount).exists { rowIndex =>
+            entry.getStringValue(rowIndex).toLowerCase.contains(search.toLowerCase)
           }
-          tagHit && searchHit
+
+        def tagHit = selectedTags.isEmpty || {
+          val entryTags: Set[String] = Option(entry.getValue(entry.getModel.findColumn("Tags")).asInstanceOf[Set[String]]).getOrElse(Set[String]())
+          selectedTags.subsetOf(entryTags)
         }
+
+        tagHit && searchHit
       }
   }
 
   //apply row filter to out table
-  val filterSubsription: Subscription = rowFilter.subscribe { rf =>
+  val filterSubscription: Subscription = rowFilter.subscribe { rf =>
     table.getRowSorter.asInstanceOf[DefaultRowSorter[DocumentTableModel, Int]].setRowFilter(rf)
   }
 
@@ -203,4 +204,39 @@ object Main extends StrictLogging {
       else        Preferences.userNodeForPackage(this.getClass)
     AppMain(preferences = prefs)
   }
+}
+
+case class BackendAdapter(backend: RODocumentStore[EitherT[IO,String,?]]{type Id = File}){
+  def documentToDoc(file: File, document: Document): Doc = {
+    val pm = DProp.ALL.foldLeft(PropertyMap.empty){ case (map, dp) =>
+      if(dp.name == DateDP.name) {
+        document.date.map(d => map.put(DateDP)(new Date(d.toEpochDay))).getOrElse(map)
+      }
+      else if(dp.name == AuthorDP.name) {
+        document.sender.map(d => map.put(AuthorDP)(d)).getOrElse(map)
+      }
+      else if(dp.name == SubjectDP.name) {
+        document.subject.map(d => map.put(SubjectDP)(d)).getOrElse(map)
+      }
+      else if(dp.name == TagListDP.name) {
+        map.put(TagListDP)(document.tags)
+      }
+      else
+      {
+        map
+      }
+    }
+    Doc(file, pm)
+  }
+
+  def docStream(reload: Observable[Unit] = Observable.just(())) : Observable[IndexedSeq[Doc]] = {
+    reload.map(_ => backend
+      .getDocuments
+      .value
+      .unsafeRunSync()
+      .getOrElse(Seq())
+      .map((documentToDoc _).tupled)(collection.breakOut))
+  }
+
+  def persistable: Persistable[Doc] = ???
 }

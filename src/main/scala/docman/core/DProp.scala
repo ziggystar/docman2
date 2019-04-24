@@ -139,7 +139,6 @@ case class PropertyMap protected(m: Map[DProp,AnyRef]){
 
 object PropertyMap{
   def empty: PropertyMap = new PropertyMap(Map())
-  def apply[DP <: DProp,P <: DP](kv: (P,P#T)): PropertyMap = new PropertyMap(Map(kv))
 }
 
 object DProp {

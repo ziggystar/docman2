@@ -1,8 +1,7 @@
 package docman.gui.table
 
 import javax.swing.table.AbstractTableModel
-
-import docman.core.{DProp, Doc, PropertyMap}
+import docman.core.{DProp, Doc, Persistable, PropertyMap}
 
 import scala.collection.mutable
 
@@ -10,7 +9,7 @@ import scala.collection.mutable
  * @author Thomas Geier
  * @since 10/26/13
  */
-case class DocumentTableModel(_docs: IndexedSeq[Doc], properties: IndexedSeq[DProp]) extends AbstractTableModel{
+case class DocumentTableModel(_docs: IndexedSeq[Doc], properties: IndexedSeq[DProp], persistable: Persistable[Doc]) extends AbstractTableModel{
   private var docs = mutable.ArrayBuffer(_docs:_*)
 
   def setDocs(newDocs: Seq[Doc]): Unit = {
@@ -45,7 +44,7 @@ case class DocumentTableModel(_docs: IndexedSeq[Doc], properties: IndexedSeq[DPr
       val doc = docs(rowIdx)
       val updatedDoc = doc.copy(properties = doc.properties ++ updatedProperties)
       docs(rowIdx) = updatedDoc
-      updatedDoc.saveMeta()
+      persistable.persist(updatedDoc)
     }
     updates.clear()
   }

@@ -60,7 +60,7 @@ object PDFView {
           val fxImage = new WritableImage(600,800)
           SwingFXUtils.toFXImage(bi, fxImage)
         }
-        .getOrElse(new Image())
+        .getOrElse(new WritableImage(600,800))
     ))
     imageView
   }
