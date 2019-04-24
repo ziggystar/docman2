@@ -1,5 +1,6 @@
-package docman.gui
+package docman.utils
 
+import docman.utils.swing.rxutils.RControl
 import javax.swing.event.{DocumentEvent, DocumentListener}
 import javax.swing.{Action => _, _}
 import jiconfont.IconCode
@@ -9,7 +10,7 @@ import rx.lang.scala.{Observable, Subject}
 
 import scala.swing.{Action, Button, Label, TextField}
 
-package object rxutils {
+package object swing {
 
   def buildIcon(icon: IconCode, size: Int = 20): Icon =
     IconFontSwing.buildIcon(icon, size)

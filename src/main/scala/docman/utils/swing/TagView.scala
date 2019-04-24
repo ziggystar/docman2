@@ -1,4 +1,4 @@
-package docman.gui
+package docman.utils.swing
 
 import java.awt.Color
 import java.awt.event.{MouseAdapter, MouseEvent}

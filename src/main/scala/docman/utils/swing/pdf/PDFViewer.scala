@@ -1,19 +1,19 @@
-package docman.gui.pdf
+package docman.utils.swing.pdf
 
 import java.awt.Image
 import java.awt.image.BufferedImage
 import java.io.File
 
 import com.typesafe.scalalogging.StrictLogging
-import docman.gui.MigPanel
-import docman.gui.rxutils._
+import docman.utils.swing._
 import org.apache.pdfbox.pdmodel.PDDocument
 import rx.lang.scala._
 import docman.utils.ResourceCache
+import docman.utils.swing.MigPanel
 import org.apache.pdfbox.rendering.{ImageType, PDFRenderer}
 
 import scala.concurrent.duration.Duration
-import scala.swing.{Button, Component, Dimension}
+import scala.swing.{Button, Component, Dimension, Label}
 
 /**
  * @author Thomas Geier
@@ -62,7 +62,7 @@ object PDFViewer extends StrictLogging {
         maxPage.switchMap(max =>
           turnPage.scan(1){case (current,diff) => math.max(1,math.min(max,current + diff))}.distinctUntilChanged
         )
-      val pageLabel = label(page.combineLatest(maxPage).map{case (p,max) => s"$p/$max"})
+      val pageLabel: Label = label(page.combineLatest(maxPage).map{case (p,max) => s"$p/$max"})
       val viewer = new PDFView(file, page)
       add(prevPageButton, "split 3")
       add(pageLabel)

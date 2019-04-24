@@ -10,13 +10,14 @@ import cats.data.EitherT
 import cats.effect.IO
 import cats.syntax.either._
 import cats.syntax.option._
-import docman.core.{RODocumentStore, Document}
+import docman.core.{Document, RODocumentStore}
 
 import scala.collection.mutable
+import scala.util.Try
 
 case class SideCarRO(roots: Seq[(File,Boolean)]) extends RODocumentStore[EitherT[IO,String,?]]{
   type F[T] = EitherT[IO,String,T]
-  override type Item = File
+  override type Content = File
   override type Id = File
 
   def scanDir(d: File, recursive: Boolean): Seq[File] = {
@@ -24,7 +25,7 @@ case class SideCarRO(roots: Seq[(File,Boolean)]) extends RODocumentStore[EitherT
     files ++ (if(recursive) dirs.flatMap(scanDir(_, recursive = true)) else Seq())
   }
 
-  val docs: mutable.Map[File, Document[File]] = (for{
+  val docs: mutable.Map[File, Document] = (for{
         (dir,rec) <- roots
         file <- scanDir(dir,rec) if file.getName.endsWith("pdf")
         sidecar = {
@@ -33,40 +34,46 @@ case class SideCarRO(roots: Seq[(File,Boolean)]) extends RODocumentStore[EitherT
         }
         d = sidecar
           .flatMap(SideCarRO.readFile)
-          .fold(e => {System.err.println(e); Document[File](new File(""))}, identity)
+          .fold(e => {System.err.println(e); Document()}, identity)
   } yield file -> d)(collection.breakOut)
 
   def notSupported[T]: F[T] = EitherT.leftT("not supported")
-  override def getDocuments: F[Seq[Document[File]]] = EitherT.rightT(docs.values.toSeq)
+  override def getDocuments: F[Seq[(File,Document)]] = EitherT.rightT(docs.toSeq)
   override def access(id: File): EitherT[IO, String, File] = EitherT.right(IO(id))
 }
 
+object SideCarHelpers {
+  def dateReader: String => Either[String,LocalDate] =
+    s => Try(LocalDate.parse(s, DateTimeFormatter.ISO_LOCAL_DATE)).toEither.leftMap(_.getMessage)
+  def fileModificationDate: File => LocalDateTime = f =>
+    LocalDateTime.ofInstant(Files.getLastModifiedTime(f.toPath).toInstant,TimeZone.getDefault.toZoneId)
+}
 object SideCarRO {
-  case class Field[T](name: String, reader: String => T, update: T => Document[File] => Document[File]){
-    def apply(s: String): Document[File] => Document[File] = update(reader(s))
+  case class Field[T](name: String, reader: String => T, update: T => Document => Document){
+    def apply(s: String): Document => Document = update(reader(s))
   }
   val fields: Map[String,Field[_]] = Seq[Field[_]](
       Field[String]("SUBJECT", identity, s => _.copy(subject = s.some)),
-      Field[LocalDate]("DATE", s => LocalDate.parse(s, DateTimeFormatter.ISO_LOCAL_DATE), d => _.copy(date = d.some)),
+      Field[Either[String,LocalDate]]("DATE", SideCarHelpers.dateReader, ed => _.copy(date = ed.right.toOption)),
       Field[Set[String]]("TAGS", _.split(',').toSet, ts => _.copy(tags = ts)),
       Field[String]("AUTHOR", identity[String], a => _.copy(sender = a.some) )
     )
     .map(f => f.name -> f)
     .toMap
 
-  val modified: File => Document[File] => Document[File] = (f: File) => (d: Document[File]) =>
+  val modified: File => Document => Document = (f: File) => (d: Document) =>
     d.copy(lastModified = LocalDateTime.ofInstant(Files.getLastModifiedTime(f.toPath).toInstant,TimeZone.getDefault.toZoneId))
 
-  def readFile(f: File): Either[String,Document[File]] = {
+  def readFile(f: File): Either[String,Document] = {
     import resource._
     managed(io.Source.fromFile(f)).map(
       _.getLines()
         .map { line =>
           val (key,value) = line.splitAt(line.indexOf(':'))
-          fields.get(key).map(_.apply(value.tail)).getOrElse(identity[Document[File]](_))
+          fields.get(key).map(_.apply(value.tail)).getOrElse(identity[Document](_))
         }
       .foldLeft(
-        modified(f)(Document(id = f))
+        modified(f)(Document())
       )((d,update) => update(d))
     ).either.left.map(_.map(_.getMessage).mkString(";"))
   }

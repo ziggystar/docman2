@@ -44,6 +44,9 @@ libraryDependencies += "com.github.jiconfont" % "jiconfont-swing" % "1.0.1"
 
 libraryDependencies += "org.typelevel" %% "cats-effect" % "1.2.0"
 
+// https://mvnrepository.com/artifact/com.chuusai/shapeless
+libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.3"
+
 resolvers += Resolver.sonatypeRepo("releases")
 
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.9")

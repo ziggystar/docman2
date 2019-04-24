@@ -4,8 +4,9 @@ import java.io.File
 
 import com.typesafe.scalalogging.StrictLogging
 import docman.config.{Config, SearchDir}
-import docman.gui.MigPanel
-import docman.gui.rxutils._
+import docman.utils.swing._
+import docman.utils.swing.MigPanel
+import docman.utils.swing.rxutils.{RControl, RXDialog}
 import javax.swing.event.TableModelEvent
 import javax.swing.table.DefaultTableModel
 import javax.swing.{JScrollPane, JTable}

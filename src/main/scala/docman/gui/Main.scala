@@ -1,17 +1,18 @@
-package docman
+package docman.gui
 
 import java.awt.image.BufferedImage
 import java.io.File
 import java.util.prefs.Preferences
 
 import com.typesafe.scalalogging.StrictLogging
+import docman.VersionInfo
 import docman.config.Config
 import docman.core.{DProp, Doc, TagListDP}
 import docman.gui.dialogs.PreferenceDialog
-import docman.gui.pdf.PDFViewer
-import docman.gui.rxutils._
 import docman.gui.table.{DocumentTable, DocumentTableModel}
-import docman.gui.{MigPanel, TagView}
+import docman.utils.swing.pdf.PDFViewer
+import docman.utils.swing.rxutils.RControl
+import docman.utils.swing.{MigPanel, TagView, _}
 import javax.imageio.ImageIO
 import javax.swing.RowFilter.Entry
 import javax.swing.event.ListSelectionEvent
@@ -124,7 +125,7 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
     allTags.map{_.groupBy(identity).toSeq.map{case (x,y) => (x,y.size)}}
   }
   private val tagView = TagView(tags)
-  leftPane.add(tagView, "")
+  leftPane.add(tagView)
 
   private val searchParams: Observable[(String, Set[String])] = quickSearchBar.obs.combineLatest(tagView.selectecTags)
   val rowFilter: Observable[RowFilter[DocumentTableModel,Int]] = searchParams.map{
