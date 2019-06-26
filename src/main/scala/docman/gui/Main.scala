@@ -2,18 +2,17 @@ package docman.gui
 
 import java.awt.image.BufferedImage
 import java.io.File
-import java.sql.Date
+import java.nio.file.Path
 import java.util.prefs.Preferences
 
-import cats.data.EitherT
-import cats.effect.IO
 import com.typesafe.scalalogging.StrictLogging
 import docman.VersionInfo
 import docman.config.Config
-import docman.core.{AuthorDP, DProp, DateDP, DirectSidecarPersistable, Doc, Document, Persistable, PropertyMap, RODocumentStore, SubjectDP, TagListDP}
-import docman.engine.SideCarRO
+import docman.core.{DProp, DirectSidecarPersistable, Doc, TagListDP}
+import docman.engine.csv.CSVStore
 import docman.gui.dialogs.PreferenceDialog
 import docman.gui.table.{DocumentTable, DocumentTableModel}
+import docman.utils.Isomorphism
 import docman.utils.swing.pdf.PDFViewer
 import docman.utils.swing.rxutils.RControl
 import docman.utils.swing.{MigPanel, TagView, _}
@@ -24,7 +23,7 @@ import javax.swing.{Action => _, _}
 import jiconfont.icons.Typicons
 import jiconfont.swing.IconFontSwing
 import rx.lang.scala.subjects.BehaviorSubject
-import rx.lang.scala.{Observable, Subscription}
+import rx.lang.scala.{Observable, Subject, Subscription}
 
 import scala.swing._
 
@@ -68,14 +67,18 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
     file.listFiles().flatMap(recursiveFiles)
   } else Array(file)
 
-  val backend: Observable[BackendAdapter[File]] =
+  val backend: Observable[BackendAdapter[Path]] =
     config.distinctUntilChanged
-      .map(c => new SideCarRO(c.searchDirs.map(sd => sd.dir -> sd.recursive)))
-      .map(BackendAdapter(_, identity))
+      .map(c => CSVStore(c.searchDirs.head.dir.toPath, c.searchDirs.head.dir.toPath.resolve("docman2db.csv").toFile))
+      .map(BackendAdapter[Path](_, Isomorphism[Path,File](_.toFile, _.toPath)))
+
+  val persistCalls: Subject[Doc] = Subject()
+
+  val updates: Subscription = backend.combineLatest(persistCalls).subscribe(be => be._1.persistable.persist(be._2))
 
   val docs: Observable[IndexedSeq[Doc]] = backend.flatMap(_.docStream())
 
-  val tableModel: DocumentTableModel = DocumentTableModel(docs.toBlocking.first, DProp.ALL, DirectSidecarPersistable.docPersistable)
+  val tableModel: DocumentTableModel = DocumentTableModel(docs.toBlocking.first, DProp.ALL, persistCalls.onNext)
   docs.foreach(tableModel.setDocs)
 
   def showAboutDialog(owner: Window): Unit = {
@@ -204,43 +207,4 @@ object Main extends StrictLogging {
       else        Preferences.userNodeForPackage(this.getClass)
     AppMain(preferences = prefs)
   }
-}
-
-case class BackendAdapter[IdT](backend: RODocumentStore[EitherT[IO,String,?]]{type Id = IdT}, file: IdT => File){
-  type DocT = Doc
-  def documentToDoc(id: IdT, document: Document): DocT = {
-    val pm = DProp.ALL.foldLeft(PropertyMap.empty){ case (map, dp) =>
-      if(dp.name == DateDP.name) {
-        document.date.map(d => map.put(DateDP)(new Date(d.toEpochDay))).getOrElse(map)
-      }
-      else if(dp.name == AuthorDP.name) {
-        document.sender.map(d => map.put(AuthorDP)(d)).getOrElse(map)
-      }
-      else if(dp.name == SubjectDP.name) {
-        document.subject.map(d => map.put(SubjectDP)(d)).getOrElse(map)
-      }
-      else if(dp.name == TagListDP.name) {
-        map.put(TagListDP)(document.tags)
-      }
-      else
-      {
-        map
-      }
-    }
-    Doc(file(id), pm)
-  }
-
-  def docStream(reload: Observable[Unit] = Observable.just(())) : Observable[IndexedSeq[DocT]] = {
-    import cats.syntax.bifunctor._
-    import cats.instances.tuple._
-    reload.map(_ => backend
-      .getAllDocuments
-      .value
-      .unsafeRunSync()
-      .getOrElse(Seq())
-      .map((documentToDoc _).tupled)(collection.breakOut))
-  }
-
-  import DirectSidecarPersistable._
-  def persistable: Persistable[DocT] = implicitly[Persistable[DocT]]
 }

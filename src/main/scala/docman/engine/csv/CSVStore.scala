@@ -7,6 +7,8 @@ import java.time.LocalDateTime
 
 import cats.data.EitherT
 import cats.effect.IO
+import cats.syntax.traverse._
+import cats.instances.list._
 import docman.core.{Document, DocumentStore}
 
 import scala.collection.JavaConverters._
@@ -30,11 +32,17 @@ case class CSVStore(root: Path, dbFile: File) extends DocumentStore[EitherT[IO,S
       _ <- EitherT.right(IO{database = entries.toMap})
     } yield ()
 
-  override def scanForPDFs: EitherT[IO, String, Seq[Id]] = for{
-    allPDFs <- EitherT.right(IO(
-        Files.find(root, 10, (p: Path, bfa: BasicFileAttributes) => bfa.isRegularFile && p.toString.toLowerCase.endsWith(".pdf")).iterator().asScala.toSeq
-    ))
-  } yield allPDFs
+  override def scanForPDFs: EitherT[IO, String, Unit] = for{
+    newPDFs <- EitherT.right(IO {
+      Files.find(
+        root,
+        10,
+        (p: Path, bfa: BasicFileAttributes) => bfa.isRegularFile && p.toString.toLowerCase.endsWith(".pdf"))
+        .iterator().asScala.toSeq
+        .filterNot(database.contains)
+    })
+    _ <- newPDFs.map(f => updateDocument(f, Document())).toList.sequence
+  } yield ()
   override def getAllDocuments: EitherT[IO, String, Seq[(Id, Doc)]] = EitherT.pure(database.toSeq)
   override def access(id: Id): EitherT[IO, String, Content] = EitherT.pure(root.resolve(id).toFile)
 }
