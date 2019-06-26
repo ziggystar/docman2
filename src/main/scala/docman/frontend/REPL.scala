@@ -19,7 +19,7 @@ object REPL{
     just(x.value.unsafeRunSync().fold[String](e => s"Error: $e", t => t.toString))
 
   def runRX(input: Observable[String], output: Observer[String]): Subscription = input.flatMap{
-    case "list" => report(backend.getDocuments.map(_.map(_.toString).mkString("\n")))
+    case "list" => report(backend.getAllDocuments.map(_.map(_.toString).mkString("\n")))
     case x@_ => Observable.just(s"Unknown command: $x")
   }.subscribe(output)
 

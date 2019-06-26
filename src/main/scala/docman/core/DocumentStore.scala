@@ -23,12 +23,14 @@ trait RODocumentStore[F[_]] {
   type Content
   type Id
   type Doc = Document
-  def getDocuments: F[Seq[(Id,Doc)]]
+  def reloadDB: F[Unit]
+  def scanForPDFs: F[Seq[Id]]
+  def getAllDocuments: F[Seq[(Id,Doc)]]
   def access(id: Id): F[Content]
 }
 
 trait DocumentStore[F[_]] extends RODocumentStore[F] {
-  def updateDocument(d: Document): F[Document]
+  def updateDocument(id: Id, d: Document): F[Document]
 }
 
 trait ColumnModelRO[F[_]] extends RODocumentStore[F]{

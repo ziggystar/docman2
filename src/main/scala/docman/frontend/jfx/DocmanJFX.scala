@@ -106,7 +106,7 @@ object DocTable {
       tableColumnOpt[Row,LocalDate]("Date", _._2.date, _.format(DateTimeFormatter.ISO_DATE), s => LocalDate.parse(s))
     )
 
-    val docs: Seq[(File, Document)] = db.getDocuments.value.unsafeRunSync().fold(_ => Seq(), identity)
+    val docs: Seq[(File, Document)] = db.getAllDocuments.value.unsafeRunSync().fold(_ => Seq(), identity)
 
     table.getItems.addAll(docs.asJava)
 

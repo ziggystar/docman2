@@ -13,7 +13,7 @@ name := "docman2"
  */
 version := "2.0.2-DEV"
 
-scalaVersion := "2.12.7"
+scalaVersion := "2.12.8"
 
 licenses += "GPLv3" -> url("https://www.gnu.org/licenses/gpl-3.0.html")
 
@@ -23,11 +23,24 @@ startYear := Some(2013)
 
 description := "Application for managing PDF files with meta data"
 
+scalacOptions += "-Ypartial-unification"
+
+libraryDependencies += "org.typelevel" %% "cats-effect" % "1.2.0"
+
+// https://mvnrepository.com/artifact/io.circe/circe-core
+val circeVersion = "0.11.1"
+
+libraryDependencies ++= Seq(
+  "io.circe" %% "circe-core",
+  "io.circe" %% "circe-generic",
+  "io.circe" %% "circe-parser"
+).map(_ % circeVersion)
+
+// https://mvnrepository.com/artifact/com.chuusai/shapeless
+libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.3"
+
 //scala-swing
 libraryDependencies += "org.scala-lang.modules" %% "scala-swing" % "2.0.2"
-
-//MigLayout
-libraryDependencies += "com.miglayout" % "miglayout-swing" % "5.2"
 
 libraryDependencies += "io.reactivex" %% "rxscala" % "0.26.5"
 
@@ -36,16 +49,6 @@ libraryDependencies += "com.jsuereth" %% "scala-arm" % "2.0"
 
 //configration
 libraryDependencies += "com.github.pureconfig" %% "pureconfig" % "0.9.2"
-
-//icons
-libraryDependencies += "com.github.jiconfont" % "jiconfont-typicons" % "2.0.7.0"
-
-libraryDependencies += "com.github.jiconfont" % "jiconfont-swing" % "1.0.1"
-
-libraryDependencies += "org.typelevel" %% "cats-effect" % "1.2.0"
-
-// https://mvnrepository.com/artifact/com.chuusai/shapeless
-libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.3"
 
 resolvers += Resolver.sonatypeRepo("releases")
 
@@ -57,9 +60,21 @@ libraryDependencies += "com.lihaoyi" %% "upickle" % "0.6.2"
 //logging
 libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.8.0"
 
-libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3"
+//testing
+// https://mvnrepository.com/artifact/org.specs2/specs2-scalacheck
+libraryDependencies += "org.specs2" %% "specs2-scalacheck" % "4.5.1" % Test
 
-//******** Java dependencies
+//********************* Java Dependencies ***************************//
+
+//MigLayout
+libraryDependencies += "com.miglayout" % "miglayout-swing" % "5.2"
+
+//icons
+libraryDependencies += "com.github.jiconfont" % "jiconfont-typicons" % "2.0.7.0"
+
+libraryDependencies += "com.github.jiconfont" % "jiconfont-swing" % "1.0.1"
+
+libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3"
 
 //pdfbox
 libraryDependencies += "org.apache.pdfbox" % "pdfbox" % "2.0.8"

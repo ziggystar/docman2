@@ -12,7 +12,6 @@ import cats.syntax.either._
 import cats.syntax.option._
 import docman.core.{Document, RODocumentStore}
 
-import scala.collection.mutable
 import scala.util.Try
 
 case class SideCarRO(roots: Seq[(File,Boolean)]) extends RODocumentStore[EitherT[IO,String,?]]{
@@ -20,26 +19,28 @@ case class SideCarRO(roots: Seq[(File,Boolean)]) extends RODocumentStore[EitherT
   override type Content = File
   override type Id = File
 
-  def scanDir(d: File, recursive: Boolean): Seq[File] = {
-    val (dirs,files) = Option(d.listFiles()).map(_.toSeq).getOrElse(Seq()).partition(_.isDirectory)
-    files ++ (if(recursive) dirs.flatMap(scanDir(_, recursive = true)) else Seq())
+
+  def loadSideCarFiles: IO[Map[File,Document]] = IO{
+    (for{
+      (dir,rec) <- roots
+      file <- SideCarRO.scanDir(dir,rec) if file.getName.endsWith("pdf")
+      sidecar = {
+        val n = file.getAbsolutePath
+        new File(n.take(n.lastIndexOf('.')) + ".smd").asRight.filterOrElse(_.exists(), s"sidecar for $n does not exist")
+      }
+      d = sidecar
+        .flatMap(SideCarRO.readFile)
+        .fold(e => {System.err.println(e); Document()}, identity)
+    } yield file -> d)(collection.breakOut)
   }
 
-  val docs: mutable.Map[File, Document] = (for{
-        (dir,rec) <- roots
-        file <- scanDir(dir,rec) if file.getName.endsWith("pdf")
-        sidecar = {
-          val n = file.getAbsolutePath
-          new File(n.take(n.lastIndexOf('.')) + ".smd").asRight.filterOrElse(_.exists(), s"sidecar for $n does not exist")
-        }
-        d = sidecar
-          .flatMap(SideCarRO.readFile)
-          .fold(e => {System.err.println(e); Document()}, identity)
-  } yield file -> d)(collection.breakOut)
+  var docs: Map[File, Document] = loadSideCarFiles.unsafeRunSync()
 
   def notSupported[T]: F[T] = EitherT.leftT("not supported")
-  override def getDocuments: F[Seq[(File,Document)]] = EitherT.rightT(docs.toSeq)
+  override def getAllDocuments: F[Seq[(File,Document)]] = EitherT.rightT(docs.toSeq)
   override def access(id: File): EitherT[IO, String, File] = EitherT.right(IO(id))
+  override def reloadDB: EitherT[IO, String, Unit] = EitherT.liftF(loadSideCarFiles.map(m => {docs = m}))
+  override def scanForPDFs: EitherT[IO, String, Seq[File]] = notSupported
 }
 
 object SideCarHelpers {
@@ -66,7 +67,7 @@ object SideCarRO {
 
   def readFile(f: File): Either[String,Document] = {
     import resource._
-    managed(io.Source.fromFile(f)).map(
+    managed(scala.io.Source.fromFile(f)).map(
       _.getLines()
         .map { line =>
           val (key,value) = line.splitAt(line.indexOf(':'))
@@ -76,5 +77,10 @@ object SideCarRO {
         modified(f)(Document())
       )((d,update) => update(d))
     ).either.left.map(_.map(_.getMessage).mkString(";"))
+  }
+
+  def scanDir(d: File, recursive: Boolean): Seq[File] = {
+    val (dirs,files) = Option(d.listFiles()).map(_.toSeq).getOrElse(Seq()).partition(_.isDirectory)
+    files ++ (if(recursive) dirs.flatMap(scanDir(_, recursive = true)) else Seq())
   }
 }

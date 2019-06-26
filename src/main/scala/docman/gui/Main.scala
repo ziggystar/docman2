@@ -68,10 +68,10 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
     file.listFiles().flatMap(recursiveFiles)
   } else Array(file)
 
-  val backend: Observable[BackendAdapter] =
+  val backend: Observable[BackendAdapter[File]] =
     config.distinctUntilChanged
       .map(c => new SideCarRO(c.searchDirs.map(sd => sd.dir -> sd.recursive)))
-      .map(BackendAdapter)
+      .map(BackendAdapter(_, identity))
 
   val docs: Observable[IndexedSeq[Doc]] = backend.flatMap(_.docStream())
 
@@ -206,8 +206,9 @@ object Main extends StrictLogging {
   }
 }
 
-case class BackendAdapter(backend: RODocumentStore[EitherT[IO,String,?]]{type Id = File}){
-  def documentToDoc(file: File, document: Document): Doc = {
+case class BackendAdapter[IdT](backend: RODocumentStore[EitherT[IO,String,?]]{type Id = IdT}, file: IdT => File){
+  type DocT = Doc
+  def documentToDoc(id: IdT, document: Document): DocT = {
     val pm = DProp.ALL.foldLeft(PropertyMap.empty){ case (map, dp) =>
       if(dp.name == DateDP.name) {
         document.date.map(d => map.put(DateDP)(new Date(d.toEpochDay))).getOrElse(map)
@@ -226,17 +227,20 @@ case class BackendAdapter(backend: RODocumentStore[EitherT[IO,String,?]]{type Id
         map
       }
     }
-    Doc(file, pm)
+    Doc(file(id), pm)
   }
 
-  def docStream(reload: Observable[Unit] = Observable.just(())) : Observable[IndexedSeq[Doc]] = {
+  def docStream(reload: Observable[Unit] = Observable.just(())) : Observable[IndexedSeq[DocT]] = {
+    import cats.syntax.bifunctor._
+    import cats.instances.tuple._
     reload.map(_ => backend
-      .getDocuments
+      .getAllDocuments
       .value
       .unsafeRunSync()
       .getOrElse(Seq())
       .map((documentToDoc _).tupled)(collection.breakOut))
   }
 
-  def persistable: Persistable[Doc] = ???
+  import DirectSidecarPersistable._
+  def persistable: Persistable[DocT] = implicitly[Persistable[DocT]]
 }
