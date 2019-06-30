@@ -2,15 +2,12 @@ package docman.gui
 
 import java.awt.image.BufferedImage
 import java.io.File
-import java.nio.file.Path
-import java.util.prefs.Preferences
+import java.nio.file.{Files, Path, Paths}
 
 import com.typesafe.scalalogging.StrictLogging
-import docman.VersionInfo
-import docman.config.Config
+import docman.{BuildInfo, VersionInfo}
 import docman.core.{DProp, DirectSidecarPersistable, Doc, TagListDP}
 import docman.engine.csv.CSVStore
-import docman.gui.dialogs.PreferenceDialog
 import docman.gui.table.{DocumentTable, DocumentTableModel}
 import docman.utils.Isomorphism
 import docman.utils.swing.pdf.PDFViewer
@@ -32,10 +29,13 @@ import scala.swing._
  * @since 9/8/13
  */
 
-case class AppMain(preferences: Preferences) extends Reactor with StrictLogging {
+case class Config(searchDir: Path, dbFile: File)
+
+case class AppMain(config: Config) extends Reactor with StrictLogging {
+
+  IconFontSwing.register(Typicons.getIconFont)
 
   object actions {
-
     val closeApplication: Action = Action("Exit"){frame.closeOperation()}
       .withIcon(Typicons.POWER)
 
@@ -47,36 +47,18 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
       .withDescription("Open the PDF for the selected entry with an external viewer")
 
     val saveAllMeta: Action = Action("Save All Meta") {tableModel.saveAllMeta()}.withIcon(Typicons.FOLDER)
-
   }
 
   val applicationTitle = "Docman2"
 
-  private val initialConfig: Config = Config.load(preferences)
-    .left.map(failure => {logger.warn("failed to read config", failure); Config()})
-    .merge
-
-  val config: BehaviorSubject[Config] = BehaviorSubject[Config](initialConfig)
-
-  val cfgPrint: Subscription = config.subscribe(c => logger.debug("config changed" + c))
-
-  val persistConfig: Subscription = config.distinctUntilChanged.subscribe(Config.store(preferences,_))
-
-  /** Given a directory, list all files recursively. */
-  def recursiveFiles(file: File): Array[File] = if(file.isDirectory){
-    file.listFiles().flatMap(recursiveFiles)
-  } else Array(file)
-
-  val backend: Observable[BackendAdapter[Path]] =
-    config.distinctUntilChanged
-      .map(c => CSVStore(c.searchDirs.head.dir.toPath, c.searchDirs.head.dir.toPath.resolve("docman2db.csv").toFile))
-      .map(BackendAdapter[Path](_, Isomorphism[Path,File](_.toFile, _.toPath)))
+  val store = CSVStore(config.searchDir, config.dbFile)
+  val backend: BackendAdapter[Path] = BackendAdapter[Path](store, Isomorphism[Path,File](_.toFile, _.toPath))
 
   val persistCalls: Subject[Doc] = Subject()
 
-  val updates: Subscription = backend.combineLatest(persistCalls).subscribe(be => be._1.persistable.persist(be._2))
+  val updates: Subscription = persistCalls.subscribe(backend.persistable.persist(_))
 
-  val docs: Observable[IndexedSeq[Doc]] = backend.flatMap(_.docStream())
+  val docs: Observable[IndexedSeq[Doc]] = backend.docStream()
 
   val tableModel: DocumentTableModel = DocumentTableModel(docs.toBlocking.first, DProp.ALL, persistCalls.onNext)
   docs.foreach(tableModel.setDocs)
@@ -182,9 +164,6 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
     contents += new Menu("File") {
       contents += new MenuItem(actions.saveAllMeta)
       contents += new MenuItem(actions.openSelectedPDF)
-      contents += new MenuItem(Action("Preferences")(
-        PreferenceDialog.show(frame,config.toBlocking.first).subscribe(config.onNext(_)))
-      )
       contents += new MenuItem(actions.closeApplication)
     }
     contents += new Menu("About") {
@@ -196,15 +175,18 @@ case class AppMain(preferences: Preferences) extends Reactor with StrictLogging 
   frame.open()
 }
 
-object Main extends StrictLogging {
-  def main(args: Array[String]) {
-    IconFontSwing.register(Typicons.getIconFont)
+import cats.implicits._
+import com.monovore.decline._
 
-    val devMode = VersionInfo.isDefVersion
-    if (devMode) logger.warn( "running in developer mode" )
-    val prefs: Preferences =
-      if(devMode) Preferences.userNodeForPackage(this.getClass).node("development")
-      else        Preferences.userNodeForPackage(this.getClass)
-    AppMain(preferences = prefs)
-  }
-}
+object Main extends CommandApp(
+  name="docman2",
+  header = "PDF management application",
+  main = {
+    val db = Opts.option[String]("dbfile", "data base file")
+      .withDefault(System.getProperty("user.home", "") + "/.docman2/db.0.csv")
+      .map(new File(_))
+    val root = Opts.argument[String]("root").map(Paths.get(_))
+    (root,db).mapN(Config(_,_)).map(AppMain(_))
+  },
+  version = BuildInfo.version
+)

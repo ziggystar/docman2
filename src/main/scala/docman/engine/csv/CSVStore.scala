@@ -38,7 +38,8 @@ case class CSVStore(root: Path, dbFile: File) extends DocumentStore[EitherT[IO,S
         root,
         10,
         (p: Path, bfa: BasicFileAttributes) => bfa.isRegularFile && p.toString.toLowerCase.endsWith(".pdf"))
-        .iterator().asScala.toSeq
+        .iterator().asScala.toIndexedSeq
+        .map(root.relativize)
         .filterNot(database.contains)
     })
     _ <- newPDFs.map(f => updateDocument(f, Document())).toList.sequence

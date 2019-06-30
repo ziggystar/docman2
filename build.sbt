@@ -25,6 +25,12 @@ description := "Application for managing PDF files with meta data"
 
 scalacOptions += "-Ypartial-unification"
 
+addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.9")
+
+resolvers += Resolver.sonatypeRepo("releases")
+
+libraryDependencies += "io.reactivex" %% "rxscala" % "0.26.5"
+
 libraryDependencies += "org.typelevel" %% "cats-effect" % "1.2.0"
 
 // https://mvnrepository.com/artifact/io.circe/circe-core
@@ -36,23 +42,13 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-parser"
 ).map(_ % circeVersion)
 
-// https://mvnrepository.com/artifact/com.chuusai/shapeless
-libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.3"
-
 //scala-swing
 libraryDependencies += "org.scala-lang.modules" %% "scala-swing" % "2.0.2"
-
-libraryDependencies += "io.reactivex" %% "rxscala" % "0.26.5"
 
 //scala-arm
 libraryDependencies += "com.jsuereth" %% "scala-arm" % "2.0"
 
-//configration
-libraryDependencies += "com.github.pureconfig" %% "pureconfig" % "0.9.2"
-
-resolvers += Resolver.sonatypeRepo("releases")
-
-addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.9")
+libraryDependencies += "com.monovore" %% "decline" % "0.5.0"
 
 //configuration serialization
 libraryDependencies += "com.lihaoyi" %% "upickle" % "0.6.2"
