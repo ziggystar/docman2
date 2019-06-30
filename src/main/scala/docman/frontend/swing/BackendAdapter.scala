@@ -1,4 +1,4 @@
-package docman.gui
+package docman.frontend.swing
 
 import java.io.File
 import java.sql.Date

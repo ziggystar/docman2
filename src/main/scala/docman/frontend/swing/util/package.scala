@@ -1,4 +1,4 @@
-package docman.gui
+package docman.frontend.swing
 
 import javax.swing.event.{DocumentEvent, DocumentListener}
 import javax.swing.{Action => _, _}

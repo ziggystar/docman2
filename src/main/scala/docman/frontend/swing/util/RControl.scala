@@ -1,4 +1,4 @@
-package docman.gui.util
+package docman.frontend.swing.util
 
 import rx.lang.scala.Observable
 

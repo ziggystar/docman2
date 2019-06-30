@@ -1,4 +1,4 @@
-package docman.gui.util
+package docman.frontend.swing.util
 
 /* Copyright 2010 Trond Bjerkestrand
 *

@@ -1,4 +1,4 @@
-package docman.gui.table
+package docman.frontend.swing.table
 
 import javax.swing.table.AbstractTableModel
 import docman.core.{DProp, Doc, Persistable, PropertyMap}

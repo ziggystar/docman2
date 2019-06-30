@@ -1,4 +1,4 @@
-package docman.gui
+package docman.frontend.swing
 
 import java.awt.image.BufferedImage
 import java.io.File
@@ -8,10 +8,10 @@ import com.typesafe.scalalogging.StrictLogging
 import docman.VersionInfo
 import docman.core.{DProp, Doc, TagListDP}
 import docman.backend.csv.CSVStore
-import docman.gui.table.{DocumentTable, DocumentTableModel}
+import docman.frontend.swing.table.{DocumentTable, DocumentTableModel}
 import util.{MigPanel, RControl, _}
 import docman.utils.Isomorphism
-import docman.gui.pdf.PDFViewer
+import docman.frontend.swing.pdf.PDFViewer
 import javax.imageio.ImageIO
 import javax.swing.RowFilter.Entry
 import javax.swing.event.ListSelectionEvent

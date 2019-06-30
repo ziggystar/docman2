@@ -1,12 +1,12 @@
-package docman.gui.pdf
+package docman.frontend.swing.pdf
 
 import java.awt.Image
 import java.awt.image.BufferedImage
 import java.io.File
 
 import com.typesafe.scalalogging.StrictLogging
-import docman.gui.util.MigPanel
-import docman.gui.util._
+import docman.frontend.swing.util.MigPanel
+import docman.frontend.swing.util._
 import org.apache.pdfbox.pdmodel.PDDocument
 import rx.lang.scala._
 import docman.utils.ResourceCache
