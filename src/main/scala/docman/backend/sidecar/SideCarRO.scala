@@ -1,4 +1,4 @@
-package docman.engine
+package docman.backend.sidecar
 
 import java.io.File
 import java.nio.file.Files

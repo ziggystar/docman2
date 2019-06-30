@@ -1,13 +1,12 @@
-package docman.frontend
+package docman.frontend.repl
 
-import java.io.{File, InputStream, OutputStream, PrintStream}
+import java.io.File
 
 import cats.data.EitherT
 import cats.effect.IO
-import docman.core.RODocumentStore
-import docman.engine.SideCarRO
+import docman.backend.sidecar.SideCarRO
+import rx.lang.scala.Observable._
 import rx.lang.scala.{Observable, Observer, Subject, Subscription}
-import Observable._
 
 import scala.io.Source
 

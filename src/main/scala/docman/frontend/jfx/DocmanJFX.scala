@@ -7,9 +7,9 @@ import java.time.format.DateTimeFormatter
 import cats.data.EitherT
 import cats.effect.IO
 import docman.core.{Document, RODocumentStore}
-import docman.engine.SideCarRO
+import docman.backend.sidecar.SideCarRO
 import docman.utils.ResourceCache
-import docman.utils.jfx._
+import util._
 import javafx.application.Application
 import javafx.beans.property.{ReadOnlyObjectProperty, ReadOnlyObjectWrapper}
 import javafx.embed.swing.SwingFXUtils

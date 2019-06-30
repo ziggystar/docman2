@@ -1,4 +1,4 @@
-package docman.engine
+package docman.backend
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
 import java.util.Date
@@ -7,7 +7,7 @@ import docman.core.Document
 import org.scalacheck.{Arbitrary, Gen}
 import org.specs2.ScalaCheck
 
-import docman.engine.csv.CSVHelpers._
+import docman.backend.csv.CSVHelpers._
 
 trait DocmanArbitraries {self: ScalaCheck =>
   import Arbitrary._

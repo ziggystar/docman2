@@ -1,15 +1,15 @@
-package docman.utils.swing.pdf
+package docman.gui.pdf
 
 import java.awt.Image
 import java.awt.image.BufferedImage
 import java.io.File
 
 import com.typesafe.scalalogging.StrictLogging
-import docman.utils.swing._
+import docman.gui.util.MigPanel
+import docman.gui.util._
 import org.apache.pdfbox.pdmodel.PDDocument
 import rx.lang.scala._
 import docman.utils.ResourceCache
-import docman.utils.swing.MigPanel
 import org.apache.pdfbox.rendering.{ImageType, PDFRenderer}
 
 import scala.concurrent.duration.Duration
