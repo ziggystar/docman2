@@ -59,9 +59,8 @@ object CSVHelpers {
       relativeFile <- EitherT(
         IO{
           Either.right(db)
-            .filterOrElse(_.isFile, s"$db is not a file")
             .map(_.toPath.getParent)
-            .flatMap(dbRoot => Try(dbRoot.relativize(docFile)).toEither.leftMap(_.getMessage))
+            .flatMap(dbRoot => Try(dbRoot.relativize(docFile)).toEither.leftMap(e => s"error relativizing $docFile to $dbRoot (of db file $db):  ${e.getMessage}"))
         }
       )
       _ <- EitherT(

@@ -26,11 +26,10 @@ case class CSVStore(root: Path, dbFile: File) extends DocumentStore[EitherT[IO,S
     _ <- EitherT.right(IO{database = database + (id -> dUpdate)})
   } yield dUpdate
 
-  override def reloadDB: EitherT[IO, String, Unit] =
-    for{
-      entries <- CSVHelpers.readFile(dbFile, createIfNotExists = false)
-      _ <- EitherT.right(IO{database = entries.toMap})
-    } yield ()
+  override def reloadDB: EitherT[IO, String, Unit] = for{
+    entries <- CSVHelpers.readFile(dbFile, createIfNotExists = false)
+    _ <- EitherT.right(IO{database = entries.toMap})
+  } yield ()
 
   override def scanForPDFs: EitherT[IO, String, Unit] = for{
     newPDFs <- EitherT.right(IO {
@@ -44,7 +43,9 @@ case class CSVStore(root: Path, dbFile: File) extends DocumentStore[EitherT[IO,S
     })
     _ <- newPDFs.map(f => updateDocument(f, Document())).toList.sequence
   } yield ()
+
   override def getAllDocuments: EitherT[IO, String, Seq[(Id, Doc)]] = EitherT.pure(database.toSeq)
+
   override def access(id: Id): EitherT[IO, String, Content] = EitherT.pure(root.resolve(id).toFile)
 }
 

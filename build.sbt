@@ -48,7 +48,7 @@ libraryDependencies += "org.scala-lang.modules" %% "scala-swing" % "2.0.2"
 //scala-arm
 libraryDependencies += "com.jsuereth" %% "scala-arm" % "2.0"
 
-libraryDependencies += "com.monovore" %% "decline" % "0.5.0"
+libraryDependencies += "com.monovore" %% "decline" % "0.6.2"
 
 //configuration serialization
 libraryDependencies += "com.lihaoyi" %% "upickle" % "0.6.2"

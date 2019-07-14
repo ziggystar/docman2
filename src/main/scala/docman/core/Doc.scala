@@ -6,6 +6,7 @@ import org.apache.pdfbox.pdmodel.{PDDocument, PDDocumentInformation}
 import resource._
 
 /**
+  * Old version of document based on a PropertyMap.
  * @param pdfFile
  * @param properties
  */

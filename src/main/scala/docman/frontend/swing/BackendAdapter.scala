@@ -27,8 +27,7 @@ case class BackendAdapter[IdT](backend: DocumentStore[EitherT[IO,String,?]]{type
       else if(dp.name == TagListDP.name) {
         map.put(TagListDP)(document.tags)
       }
-      else
-      {
+      else {
         map
       }
     }
@@ -65,7 +64,6 @@ case class BackendAdapter[IdT](backend: DocumentStore[EitherT[IO,String,?]]{type
   }
 
   def persistable: Persistable[DocT] = (t: DocT) => {
-    println(s"persisting ${t.pdfFile}")
     ( for{
       _ <- (backend.updateDocument _).tupled(docToDocumentId(t))
       _ <- EitherT.right[String](IO(internalUpdates.onNext(()))) //trigger update
