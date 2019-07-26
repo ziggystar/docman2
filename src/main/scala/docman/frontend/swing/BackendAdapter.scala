@@ -5,13 +5,14 @@ import java.sql.Date
 
 import cats.data.EitherT
 import cats.effect.IO
+import com.typesafe.scalalogging.StrictLogging
 import docman.core._
 import docman.utils.Isomorphism
 import rx.lang.scala.{Observable, Subject}
 
 /** Bridge from old code to functional backend. */
 
-case class BackendAdapter[IdT](backend: DocumentStore[EitherT[IO,String,?]]{type Id = IdT}, file: Isomorphism[IdT,File]){
+case class BackendAdapter[IdT](backend: DocumentStore[EitherT[IO,String,?]]{type Id = IdT; type Content = File}, pdfFileToId: File => IdT) extends StrictLogging{
   type DocT = Doc
   private def documentToDoc(id: IdT, document: Document): DocT = {
     val pm = DProp.ALL.foldLeft(PropertyMap.empty){ case (map, dp) =>
@@ -31,10 +32,10 @@ case class BackendAdapter[IdT](backend: DocumentStore[EitherT[IO,String,?]]{type
         map
       }
     }
-    Doc(file.forward(id), pm)
+    backend.access(id).map(Doc(_, pm)).value.unsafeRunSync().right.get
   }
   private def docToDocumentId(doc: DocT): (IdT, Document) = (
-    file.backward(doc.pdfFile),
+    pdfFileToId(doc.pdfFile),
     Document(
       sender = doc.properties.get(AuthorDP),
       subject = doc.properties.get(SubjectDP),

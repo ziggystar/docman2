@@ -9,11 +9,12 @@ import cats.data.EitherT
 import cats.effect.IO
 import cats.syntax.traverse._
 import cats.instances.list._
+import com.typesafe.scalalogging.StrictLogging
 import docman.core.{Document, DocumentStore}
 
 import scala.collection.JavaConverters._
 
-case class CSVStore(root: Path, dbFile: File) extends DocumentStore[EitherT[IO,String,?]] {
+case class CSVStore(root: Path, dbFile: File) extends DocumentStore[EitherT[IO,String,?]] with StrictLogging {
   override type Content = File
   /** Id is a full or relative path to a pdf file. It must be below one of the root directories. */
   type Id = Path
@@ -21,17 +22,20 @@ case class CSVStore(root: Path, dbFile: File) extends DocumentStore[EitherT[IO,S
   var database: Map[Path, Document] = Map()
 
   override def updateDocument(id: Id, d: Doc): EitherT[IO, String, Doc] = for {
+    _ <- EitherT.right(IO(logger.debug(s"update data for $id to $d")))
     dUpdate <- EitherT.liftF(IO(d.copy(lastModified = LocalDateTime.now())))
     _ <- CSVHelpers.write(dbFile, id, dUpdate)
     _ <- EitherT.right(IO{database = database + (id -> dUpdate)})
   } yield dUpdate
 
   override def reloadDB: EitherT[IO, String, Unit] = for{
+    _ <- EitherT.right(IO(logger.debug(s"load database from file $dbFile")))
     entries <- CSVHelpers.readFile(dbFile, createIfNotExists = false)
     _ <- EitherT.right(IO{database = entries.toMap})
   } yield ()
 
   override def scanForPDFs: EitherT[IO, String, Unit] = for{
+    _ <- EitherT.right(IO(logger.debug(s"scan for new PDFs under $root")))
     newPDFs <- EitherT.right(IO {
       Files.find(
         root,

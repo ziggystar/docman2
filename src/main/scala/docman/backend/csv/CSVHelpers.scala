@@ -56,13 +56,6 @@ object CSVHelpers {
     */
   def write(db: File, docFile: Path, data: Document): EitherT[IO,String,Unit] = {
     for{
-      relativeFile <- EitherT(
-        IO{
-          Either.right(db)
-            .map(_.toPath.getParent)
-            .flatMap(dbRoot => Try(dbRoot.relativize(docFile)).toEither.leftMap(e => s"error relativizing $docFile to $dbRoot (of db file $db):  ${e.getMessage}"))
-        }
-      )
       _ <- EitherT(
         IO(new FileOutputStream(db, true))
           .bracket(fout => IO(fout.write((makeLine(docFile.toString, data) + "\n").getBytes("UTF8"))))(fout => IO(fout.close()))

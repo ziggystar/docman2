@@ -44,7 +44,7 @@ case class AppMain(config: Config) extends Reactor with StrictLogging {
   val applicationTitle = "Docman2"
 
   val store = CSVStore(config.searchDir, config.dbFile)
-  val backend: BackendAdapter[Path] = BackendAdapter[Path](store, Isomorphism[Path,File](_.toFile, _.toPath))
+  val backend: BackendAdapter[Path] = BackendAdapter[Path](store, f => config.searchDir.relativize(f.toPath))
 
   val persistCalls: Subject[Doc] = Subject()
 
