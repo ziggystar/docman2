@@ -1,19 +1,16 @@
 package docman.backend.csv
 
 import java.io.{File, FileOutputStream}
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 
 import cats.data.EitherT
 import cats.effect.IO
 import cats.instances.all._
 import cats.syntax.all._
 import docman.core.Document
-import io.circe._
 import io.circe.generic.auto._
 import io.circe.parser._
 import io.circe.syntax._
-
-import scala.util.Try
 
 object CSVHelpers {
   /** Read in a CSV file. If there are multiple entries for a document, the last one counts.
@@ -39,7 +36,7 @@ object CSVHelpers {
   } yield res
 
   def touch(f: File): EitherT[IO, String, Unit] =
-    EitherT(IO(Files.createFile(f.toPath)).unlessA(f.exists).attempt.map(_.leftMap(_.getMessage)))
+    EitherT(IO(Files.createFile(f.toPath)).unlessA(f.exists).attempt).leftMap("touching file: " + _.getLocalizedMessage)
 
   /** Tries to relativize `file` against one path in `roots`.
     * @return Tuple of the matching root (first) and the relativized path of `file` against the found root.

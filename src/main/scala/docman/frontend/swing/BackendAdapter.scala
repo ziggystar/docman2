@@ -47,12 +47,12 @@ case class BackendAdapter[IdT](backend: DocumentStore[EitherT[IO,String,?]]{type
   val internalUpdates: Subject[Unit] = Subject()
 
   val initialize: EitherT[IO, String, Unit] = for{
-    _ <- backend.reloadDB
-    _ <- backend.scanForPDFs
+    _ <- backend.reloadDB.leftMap("reloading db: " + _)
+    _ <- backend.scanForPDFs.leftMap("scanning for pdfs: " + _)
   } yield ()
 
   //load db initially
-  initialize.value.unsafeRunSync()
+  initialize.value.unsafeRunSync().left.foreach(e => logger.error(e))
 
   def docStream(reload: Observable[Unit] = Observable.just(())) : Observable[IndexedSeq[DocT]] =
     (reload merge internalUpdates).map(_ => backend

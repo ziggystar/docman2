@@ -7,12 +7,13 @@ import java.time.LocalDateTime
 
 import cats.data.EitherT
 import cats.effect.IO
-import cats.syntax.traverse._
-import cats.instances.list._
+import cats.instances.all._
+import cats.syntax.all._
 import com.typesafe.scalalogging.StrictLogging
 import docman.core.{Document, DocumentStore}
 
 import scala.collection.JavaConverters._
+import scala.util.Try
 
 case class CSVStore(root: Path, dbFile: File) extends DocumentStore[EitherT[IO,String,?]] with StrictLogging {
   override type Content = File
@@ -36,15 +37,15 @@ case class CSVStore(root: Path, dbFile: File) extends DocumentStore[EitherT[IO,S
 
   override def scanForPDFs: EitherT[IO, String, Unit] = for{
     _ <- EitherT.right(IO(logger.debug(s"scan for new PDFs under $root")))
-    newPDFs <- EitherT.right(IO {
-      Files.find(
-        root,
-        10,
-        (p: Path, bfa: BasicFileAttributes) => bfa.isRegularFile && p.toString.toLowerCase.endsWith(".pdf"))
-        .iterator().asScala.toIndexedSeq
-        .map(root.relativize)
-        .filterNot(database.contains)
-    })
+    newPDFs <- EitherT(IO(
+          Files.find(
+            root,
+            10,
+            (p: Path, bfa: BasicFileAttributes) => bfa.isRegularFile && p.toString.toLowerCase.endsWith(".pdf"))
+            .iterator().asScala.toIndexedSeq
+            .map(root.relativize)
+            .filterNot(database.contains)
+        ).attempt.map(_.leftMap(_.getMessage)))
     _ <- newPDFs.map(f => updateDocument(f, Document())).toList.sequence
   } yield ()
 
