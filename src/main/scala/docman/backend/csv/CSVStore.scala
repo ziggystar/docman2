@@ -21,23 +21,23 @@ case class CSVStore(root: Path, dbFile: File) extends DocumentStore[EitherT[IO,S
 
   var database: Map[Path, Document] = Map()
 
-  def normalizePath(p: Path): Path = root.toRealPath().relativize(p.toRealPath())
+  logger.info(s"root: ${root.toRealPath()}")
+
+  def normalizeFoundPath(p: Path): Path = root.toRealPath().relativize(p.toRealPath())
 
   override def updateDocument(id: Id, d: Doc): EitherT[IO, String, Doc] = {
-    val realPath = normalizePath(id)
     for {
-      _ <- EitherT.right(IO(logger.debug(s"update data for $realPath to $d")))
+      _ <- EitherT.right(IO(logger.debug(s"update data for $id to $d")))
       dUpdate <- EitherT.liftF(IO(d.copy(lastModified = LocalDateTime.now())))
-      _ <- CSVHelpers.write(dbFile, realPath, dUpdate)
-      _ <- EitherT.right(IO{database = database + (realPath -> dUpdate)})
+      _ <- CSVHelpers.write(dbFile, id, dUpdate)
+      _ <- EitherT.right(IO{database = database + (id -> dUpdate)})
     } yield dUpdate
   }
 
   override def reloadDB: EitherT[IO, String, Unit] = for{
     _ <- EitherT.right(IO(logger.debug(s"load database from file $dbFile")))
     entries <- CSVHelpers.readFile(dbFile, createIfNotExists = false)
-    normalized = entries.map(_.leftMap(normalizePath))
-    _ <- EitherT.right(IO{database = normalized.toMap})
+    _ <- EitherT.right(IO{database = entries.toMap})
   } yield ()
 
   override def scanForPDFs: EitherT[IO, String, Unit] = for{
@@ -51,12 +51,12 @@ case class CSVStore(root: Path, dbFile: File) extends DocumentStore[EitherT[IO,S
             .map(root.relativize)
             .filterNot(database.contains)
         ).attempt.map(_.leftMap(_.getMessage)))
-    newPDFsNormalized = newPDFs.map(normalizePath)
+    newPDFsNormalized = newPDFs.map(normalizeFoundPath)
     _ <- newPDFsNormalized.map(f => updateDocument(f, Document())).toList.sequence
   } yield ()
 
   override def getAllDocuments: EitherT[IO, String, Seq[(Id, Doc)]] = EitherT.pure(database.toSeq)
 
-  override def access(id: Id): EitherT[IO, String, Content] = EitherT.pure(root.resolve(normalizePath(id)).toFile)
+  override def access(id: Id): EitherT[IO, String, Content] = EitherT.pure(root.resolve(id).toRealPath().toFile)
 }
 

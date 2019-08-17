@@ -12,8 +12,8 @@ import rx.lang.scala.{Observable, Subject}
 /** Bridge from old code to functional backend. */
 
 case class BackendAdapter[IdT](backend: DocumentStore[EitherT[IO,String,?]]{type Id = IdT; type Content = File}, pdfFileToId: File => IdT) extends StrictLogging{
-  type DocT = Doc
-  private def documentToDoc(id: IdT, document: Document): DocT = {
+  type LegacyDoc = Doc //old document type
+  private def documentToDoc(id: IdT, document: Document): LegacyDoc = {
     val pm = DProp.ALL.foldLeft(PropertyMap.empty){ case (map, dp) =>
       if(dp.name == DateDP.name) {
         document.date.map(d => map.put(DateDP)(Date.valueOf(d))).getOrElse(map)
@@ -34,7 +34,7 @@ case class BackendAdapter[IdT](backend: DocumentStore[EitherT[IO,String,?]]{type
     backend.access(id).map(Doc(_, pm)).value.unsafeRunSync().right.get
   }
 
-  private def docToDocumentId(doc: DocT): (IdT, Document) =
+  private def docToDocumentId(doc: LegacyDoc): (IdT, Document) =
     (pdfFileToId(doc.pdfFile) ->
       Document(
         sender = doc.properties.get(AuthorDP),
@@ -54,7 +54,7 @@ case class BackendAdapter[IdT](backend: DocumentStore[EitherT[IO,String,?]]{type
   //load db initially
   initialize.value.unsafeRunSync().left.foreach(e => logger.error(e))
 
-  def docStream(reload: Observable[Unit] = Observable.just(())) : Observable[IndexedSeq[DocT]] =
+  def docStream(reload: Observable[Unit] = Observable.just(())) : Observable[IndexedSeq[LegacyDoc]] =
     (reload merge internalUpdates).map(_ => backend
       .getAllDocuments
       .value
@@ -62,7 +62,7 @@ case class BackendAdapter[IdT](backend: DocumentStore[EitherT[IO,String,?]]{type
       .getOrElse(Seq())
       .map((documentToDoc _).tupled)(collection.breakOut))
 
-  def persistable: Persistable[DocT] = (t: DocT) =>
+  def persistable: Persistable[LegacyDoc] = (t: LegacyDoc) =>
     ( for{
       _ <- (backend.updateDocument _).tupled(docToDocumentId(t))
       _ <- EitherT.right[String](IO(internalUpdates.onNext(()))) //trigger update

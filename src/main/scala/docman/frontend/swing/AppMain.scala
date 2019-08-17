@@ -10,7 +10,6 @@ import docman.core.{DProp, Doc, TagListDP}
 import docman.backend.csv.CSVStore
 import docman.frontend.swing.table.{DocumentTable, DocumentTableModel}
 import util.{MigPanel, RControl, _}
-import docman.utils.Isomorphism
 import docman.frontend.swing.pdf.PDFViewer
 import javax.imageio.ImageIO
 import javax.swing.RowFilter.Entry
@@ -27,13 +26,17 @@ case class AppMain(config: Config) extends Reactor with StrictLogging {
 
   IconFontSwing.register(Typicons.getIconFont)
 
+  def findExecutable(command: String): Option[String] = ???
+
   object actions {
     val closeApplication: Action = Action("Exit"){frame.closeOperation()}
       .withIcon(Typicons.POWER)
 
     val openSelectedPDF: Action = Action("Open Selected PDF"){
+      import sys.process._
         table.getSelectedDocuments.headOption.foreach(selectedPDF =>
-          sys.process.Process(f"gnome-open ${selectedPDF.pdfFile.getAbsoluteFile}").run())
+          s"open ${selectedPDF.pdfFile.getAbsoluteFile}" !
+        )
       }
       .withIcon(Typicons.EYE)
       .withDescription("Open the PDF for the selected entry with an external viewer")
@@ -44,7 +47,7 @@ case class AppMain(config: Config) extends Reactor with StrictLogging {
   val applicationTitle = "Docman2"
 
   val store = CSVStore(config.searchDir, config.dbFile)
-  val backend: BackendAdapter[Path] = BackendAdapter[Path](store, f => config.searchDir.relativize(f.toPath))
+  val backend: BackendAdapter[Path] = BackendAdapter[Path](store, f => config.searchDir.toRealPath().relativize(f.toPath.toRealPath()))
 
   val persistCalls: Subject[Doc] = Subject()
 
