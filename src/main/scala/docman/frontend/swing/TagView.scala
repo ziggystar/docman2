@@ -13,13 +13,13 @@ import scala.swing.{Dimension, FlowPanel, Label}
 /**
   * Created by thomas on 08.11.16.
   */
-case class TagView(tags: Observable[Seq[(String,Int)]], maxTags: Int = 20) extends FlowPanel {
+case class TagView(tags: Observable[Map[String,Int]], maxTags: Int = 20) extends FlowPanel {
 
   peer.setLayout(new WrapLayout())
 
   preferredSize = new Dimension(300,100)
 
-  val displayedTags: Observable[Seq[(String,Int)]] = tags.map(_.sortBy(-_._2).take(maxTags))
+  val displayedTags: Observable[Seq[(String,Int)]] = tags.map(_.toSeq.sortBy(-_._2).take(maxTags))
   val toggles: Subject[(String,Boolean)] = Subject[(String,Boolean)]
   val selectecTags: Observable[Set[String]] = toggles.scan(Set[String]()){
     case (ts, (t,true)) => ts + t

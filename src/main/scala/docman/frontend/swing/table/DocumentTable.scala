@@ -25,7 +25,7 @@ class DocumentTable(val documentModel: DocumentTableModel) extends JTable(docume
       prop <- documentModel.propertyAtColumn(col).map(_.asInstanceOf[SwingTableProperty])
       tableColumn = getColumnModel.getColumn(col)
     } {
-      tableColumn.setCellEditor(prop.cellEditor)
+      tableColumn.setCellEditor(prop.cellEditor.orNull)
       tableColumn.setCellRenderer(prop.cellRenderer)
     }
   }

@@ -27,6 +27,9 @@ case class BackendAdapter[IdT](backend: DocumentStore[EitherT[IO,String,?]]{type
       else if(dp.name == TagListDP.name) {
         map.put(TagListDP)(document.tags)
       }
+      else if(dp.name == ModificationDateDP.name){
+        map.put(ModificationDateDP)(Date.valueOf(document.lastModified.toLocalDate))
+      }
       else {
         map
       }

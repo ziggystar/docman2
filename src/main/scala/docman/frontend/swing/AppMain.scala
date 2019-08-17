@@ -4,13 +4,16 @@ import java.awt.image.BufferedImage
 import java.io.File
 import java.nio.file.Path
 
+import cats.data.EitherT
+import cats.effect.IO
 import com.typesafe.scalalogging.StrictLogging
 import docman.VersionInfo
-import docman.core.{DProp, Doc, TagListDP}
+import docman.core.{DProp, DSMapDocument, Doc, DocumentStore, TagListDP}
 import docman.backend.csv.CSVStore
 import docman.frontend.swing.table.{DocumentTable, DocumentTableModel}
 import util.{MigPanel, RControl, _}
 import docman.frontend.swing.pdf.PDFViewer
+import javafx.print.PrinterJob.JobStatus
 import javax.imageio.ImageIO
 import javax.swing.RowFilter.Entry
 import javax.swing.event.ListSelectionEvent
@@ -46,7 +49,10 @@ case class AppMain(config: Config) extends Reactor with StrictLogging {
 
   val applicationTitle = "Docman2"
 
-  val store = CSVStore(config.searchDir, config.dbFile)
+  val store = DSMapDocument(CSVStore(config.searchDir, config.dbFile),
+    onLoad = d => if(d.subject.exists(_.nonEmpty) || d.sender.exists(_.nonEmpty) || d.tags.nonEmpty) d else d.copy(tags = d.tags + "EMPTY"),
+    onStore = d => d.copy(tags = d.tags - "EMPTY")
+  )
   val backend: BackendAdapter[Path] = BackendAdapter[Path](store, f => config.searchDir.toRealPath().relativize(f.toPath.toRealPath()))
 
   val persistCalls: Subject[Doc] = Subject()
@@ -101,9 +107,9 @@ case class AppMain(config: Config) extends Reactor with StrictLogging {
   val scrollPane: ScrollPane = new ScrollPane(Component.wrap(table))
   leftPane.add(scrollPane,"grow, pushy, wrap")
 
-  val tags: Observable[Seq[(String,Int)]] = {
+  val tags: Observable[Map[String, Int]] = {
     val allTags: Observable[Iterable[String]] = docs.map(_.flatMap(_.properties.get(TagListDP)).flatten)
-    allTags.map{_.groupBy(identity).toSeq.map{case (x,y) => (x,y.size)}}
+    allTags.map{_.groupBy(identity).map{case (x,y) => (x,y.size)}}
   }
   private val tagView = TagView(tags)
   leftPane.add(tagView)
@@ -136,8 +142,17 @@ case class AppMain(config: Config) extends Reactor with StrictLogging {
   splitPane.resizeWeight = 0.6
 
   val mainPanel = new MigPanel()
-  mainPanel.add(Component.wrap(toolbar), "growx,wrap")
-  mainPanel.add(splitPane, "grow,push")
+  mainPanel.add(Component.wrap(toolbar), "dock north")
+  mainPanel.add(splitPane, "grow,push,wrap")
+
+  val statusBar = new MigPanel()
+  val singleSelection = selectedDocuments.collect{case ds if ds.size == 1 => ds.head}
+
+  private val filePath: Label = label(singleSelection.map(_.pdfFile.getName))
+  val fpttSub = singleSelection.map(_.pdfFile.getAbsoluteFile.toString).subscribe(p => filePath.tooltip_=(p))
+  statusBar.add(filePath)
+
+  mainPanel.add(statusBar, "dock south")
 
   val frame: MainFrame = new MainFrame{
     val icon: BufferedImage = ImageIO.read(this.getClass.getClassLoader.getResourceAsStream("images/app_icon.png"))

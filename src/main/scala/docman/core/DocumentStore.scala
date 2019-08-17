@@ -2,6 +2,8 @@ package docman.core
 
 import java.time.{LocalDate, LocalDateTime}
 
+import cats.Functor
+
 /** New version of document object. */
 case class Document(sender: Option[String] = None,
                     subject: Option[String] = None,
