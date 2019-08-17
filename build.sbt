@@ -11,7 +11,7 @@ name := "docman2"
 2.0.1:
  - fix: most frequent tags are NOT displayed
  */
-version := "2.0.2-DEV"
+version := "3.0.0-DEV"
 
 scalaVersion := "2.12.8"
 
