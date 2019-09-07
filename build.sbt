@@ -81,3 +81,5 @@ lazy val root = (project in file(".")).
       buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
       buildInfoPackage := "docman"
   )
+
+mainClass in assembly := Some("docman.frontend.cli.CLI")
