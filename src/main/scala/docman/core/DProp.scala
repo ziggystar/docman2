@@ -4,9 +4,10 @@ import java.awt.Component
 import java.io.{File, FileWriter}
 import java.sql.Date
 import java.text.DateFormat
+
+import cats.effect.{IO, Resource}
 import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.{DefaultCellEditor, JTable, JTextField}
-
 import org.apache.pdfbox.pdmodel.PDDocumentInformation
 
 import scala.io.Source
@@ -161,7 +162,6 @@ object PropertyMap{
 }
 
 object DProp {
-  import resource._
   val ALL: IndexedSeq[DProp with LineSerializer with SwingTableProperty] = IndexedSeq(AuthorDP, SubjectDP, DateDP, TagListDP, ModificationDateDP)
 
   def readPropertiesFromPDF(pd: PDDocumentInformation): PropertyMap = {
@@ -173,21 +173,25 @@ object DProp {
   }
 
   /**
-   * @param f A file containing line-serialized properties.
-   * @return Property map read from the file. */
-  def readPropertiesFromFile(f: File): PropertyMap = {
-    val lines = managed(Source.fromFile(f)).map(_.getLines().toArray).opt.getOrElse(Array())
-    val props = for {
-      line <- lines
-      prop <- ALL
-      value <- prop.deserialize(line)
-    } yield PropertyMap.empty.put(prop)(value)
-    props.foldLeft(PropertyMap.empty)(_ ++ _)
-  }
+    * @param f A file containing line-serialized properties.
+    * @return Property map read from the file. */
+  def readPropertiesFromFile(f: File): PropertyMap =
+    Resource.fromAutoCloseable(IO(Source.fromFile(f)))
+      .use(bs => {
+        IO {
+          val lines = bs.getLines()
+          val props = for {
+            line <- lines
+            prop <- ALL
+            value <- prop.deserialize(line)
+          } yield PropertyMap.empty.put(prop)(value)
+          props.foldLeft(PropertyMap.empty)(_ ++ _)
+        }
+      })
+    .unsafeRunSync()
 
-  def writePropertiesToFile(props: PropertyMap, f: File): Unit = {
-    for( fos <- managed(new FileWriter(f))){
-      fos.write(props.serializeToLines.mkString("\n"))
-    }
-  }
+  def writePropertiesToFile(props: PropertyMap, f: File): Unit =
+    Resource.fromAutoCloseable(IO(new FileWriter(f)))
+    .use(fos => IO(fos.write(props.serializeToLines.mkString("\n"))))
+    .unsafeRunSync()
 }

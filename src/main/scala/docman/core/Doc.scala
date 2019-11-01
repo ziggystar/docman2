@@ -2,8 +2,8 @@ package docman.core
 
 import java.io.File
 
+import cats.effect.{IO, Resource}
 import org.apache.pdfbox.pdmodel.{PDDocument, PDDocumentInformation}
-import resource._
 
 /**
   * Old version of document based on a PropertyMap.
@@ -24,7 +24,7 @@ object DirectSidecarPersistable {
 
 object Doc{
   def getMetaData(f: File): PDDocumentInformation =
-    (for(pd <- managed(PDDocument.load(f))) yield pd.getDocumentInformation).opt.get
+    Resource.fromAutoCloseable(IO(PDDocument.load(f))).use(pd => IO(pd.getDocumentInformation)).unsafeRunSync()
 
   def sideCarFor(f: File): File = new File(f.getAbsolutePath.dropRight(3) + "smd")
   def fromFile(pdf: File): Doc = {

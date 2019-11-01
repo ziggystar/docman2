@@ -7,7 +7,7 @@ import java.time.{LocalDate, LocalDateTime}
 import java.util.TimeZone
 
 import cats.data.EitherT
-import cats.effect.IO
+import cats.effect.{IO, Resource}
 import cats.syntax.either._
 import cats.syntax.option._
 import docman.core.{Document, RODocumentStore}
@@ -65,19 +65,21 @@ object SideCarRO {
   val modified: File => Document => Document = (f: File) => (d: Document) =>
     d.copy(lastModified = LocalDateTime.ofInstant(Files.getLastModifiedTime(f.toPath).toInstant,TimeZone.getDefault.toZoneId))
 
-  def readFile(f: File): Either[String,Document] = {
-    import resource._
-    managed(scala.io.Source.fromFile(f)).map(
-      _.getLines()
-        .map { line =>
-          val (key,value) = line.splitAt(line.indexOf(':'))
-          fields.get(key).map(_.apply(value.tail)).getOrElse(identity[Document](_))
-        }
-      .foldLeft(
-        modified(f)(Document())
-      )((d,update) => update(d))
-    ).either.left.map(_.map(_.getMessage).mkString(";"))
-  }
+  def readFile(f: File): Either[String,Document] =
+    Resource.fromAutoCloseable(IO(scala.io.Source.fromFile(f))).use(bs =>
+      IO(
+        bs.getLines()
+          .map { line =>
+            val (key,value) = line.splitAt(line.indexOf(':'))
+            fields.get(key).map(_.apply(value.tail)).getOrElse(identity[Document](_))
+          }
+          .foldLeft(
+            modified(f)(Document())
+          )((d,update) => update(d))
+      )
+    )
+      .attempt.map(_.leftMap(_.getMessage))
+      .unsafeRunSync()
 
   def scanDir(d: File, recursive: Boolean): Seq[File] = {
     val (dirs,files) = Option(d.listFiles()).map(_.toSeq).getOrElse(Seq()).partition(_.isDirectory)

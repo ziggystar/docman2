@@ -31,10 +31,12 @@ resolvers += Resolver.sonatypeRepo("releases")
 
 libraryDependencies += "io.reactivex" %% "rxscala" % "0.26.5"
 
-libraryDependencies += "org.typelevel" %% "cats-effect" % "1.2.0"
+libraryDependencies += "io.monix" %% "monix" % "3.0.0"
+
+libraryDependencies += "org.typelevel" %% "cats-effect" % "2.0.0"
 
 // https://mvnrepository.com/artifact/io.circe/circe-core
-val circeVersion = "0.11.1"
+val circeVersion = "0.12.3"
 
 libraryDependencies ++= Seq(
   "io.circe" %% "circe-core",
@@ -45,20 +47,17 @@ libraryDependencies ++= Seq(
 //scala-swing
 libraryDependencies += "org.scala-lang.modules" %% "scala-swing" % "2.0.2"
 
-//scala-arm
-libraryDependencies += "com.jsuereth" %% "scala-arm" % "2.0"
-
-libraryDependencies += "com.monovore" %% "decline" % "0.6.2"
+libraryDependencies += "com.monovore" %% "decline" % "1.0.0"
 
 //configuration serialization
 libraryDependencies += "com.lihaoyi" %% "upickle" % "0.6.2"
 
 //logging
-libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.8.0"
+libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
 
 //testing
 // https://mvnrepository.com/artifact/org.specs2/specs2-scalacheck
-libraryDependencies += "org.specs2" %% "specs2-scalacheck" % "4.5.1" % Test
+libraryDependencies += "org.specs2" %% "specs2-scalacheck" % "4.8.0" % Test
 
 //********************* Java Dependencies ***************************//
 
@@ -73,7 +72,7 @@ libraryDependencies += "com.github.jiconfont" % "jiconfont-swing" % "1.0.1"
 libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3"
 
 //pdfbox
-libraryDependencies += "org.apache.pdfbox" % "pdfbox" % "2.0.8"
+libraryDependencies += "org.apache.pdfbox" % "pdfbox" % "2.0.17"
 
 lazy val root = (project in file(".")).
   enablePlugins(BuildInfoPlugin).
