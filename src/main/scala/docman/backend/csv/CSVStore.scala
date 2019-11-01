@@ -25,22 +25,22 @@ case class CSVStore(root: Path, dbFile: File) extends DocumentStore[EitherT[IO,S
 
   def normalizeFoundPath(p: Path): Path = root.toRealPath().relativize(p.toRealPath())
 
-  override def updateDocument(id: Id, d: Doc): EitherT[IO, String, Doc] = {
+  override def updateDocument(id: Id, d: Doc): EitherT[IO, String, Doc] =
     for {
       _ <- EitherT.right(IO(logger.debug(s"update data for $id to $d")))
-      dUpdate <- EitherT.liftF(IO(d.copy(lastModified = LocalDateTime.now())))
+      dUpdate = d.copy(lastModified = LocalDateTime.now())
       _ <- CSVHelpers.write(dbFile, id, dUpdate)
       _ <- EitherT.right(IO{database = database + (id -> dUpdate)})
     } yield dUpdate
-  }
 
-  override def reloadDB: EitherT[IO, String, Unit] = for{
-    _ <- EitherT.right(IO(logger.debug(s"load database from file $dbFile")))
-    entries <- CSVHelpers.readFile(dbFile, createIfNotExists = false)
-    _ <- EitherT.right(IO{database = entries.toMap})
-  } yield ()
+  override def reloadDB: EitherT[IO, String, Unit] =
+    for {
+      _ <- EitherT.right(IO(logger.debug(s"load database from file $dbFile")))
+      entries <- CSVHelpers.readFile(dbFile, createIfNotExists = false)
+      _ <- EitherT.right(IO{database = entries.toMap})
+    } yield ()
 
-  override def scanForPDFs: EitherT[IO, String, Unit] = for{
+  override def scanForPDFs: EitherT[IO, String, Unit] = for {
     _ <- EitherT.right(IO(logger.debug(s"scan for new PDFs under $root")))
     newPDFs <- EitherT(IO(
           Files.find(

@@ -50,8 +50,8 @@ case class AppMain(config: Config) extends Reactor with StrictLogging {
   val applicationTitle = "Docman2"
 
   val store = DSMapDocument(CSVStore(config.searchDir, config.dbFile),
-    onLoad = d => if(d.subject.exists(_.nonEmpty) || d.sender.exists(_.nonEmpty) || d.tags.nonEmpty) d else d.copy(tags = d.tags + "EMPTY"),
-    onStore = d => d.copy(tags = d.tags - "EMPTY")
+    onLoad = d => if(d.subject.exists(_.nonEmpty) || d.sender.exists(_.nonEmpty) || d.tags.nonEmpty) d else d.copy(tags = d.tags + "NEW"),
+    onStore = d => d.copy(tags = d.tags - "NEW")
   )
   val backend: BackendAdapter[Path] = BackendAdapter[Path](store, f => config.searchDir.toRealPath().relativize(f.toPath.toRealPath()))
 
