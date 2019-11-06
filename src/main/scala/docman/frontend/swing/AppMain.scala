@@ -45,7 +45,7 @@ case class AppMain(config: Config) extends Reactor with StrictLogging {
       .withDescription("Open the PDF for the selected entry with an external viewer")
 
     val saveAllMeta: Action = Action("Save All Meta") {tableModel.saveAllMeta()}.withIcon(Typicons.FOLDER)
-  }
+  docman.frontend.cli.CLI}
 
   val applicationTitle = "Docman2"
 
@@ -148,7 +148,7 @@ case class AppMain(config: Config) extends Reactor with StrictLogging {
   val statusBar = new MigPanel()
   val singleSelection = selectedDocuments.collect{case ds if ds.size == 1 => ds.head}
 
-  private val filePath: Label = label(singleSelection.map(_.pdfFile.getName))
+  private val filePath: Label = label(singleSelection.map(_.pdfFile.toPath.toAbsolutePath.toString))
   val fpttSub = singleSelection.map(_.pdfFile.getAbsoluteFile.toString).subscribe(p => filePath.tooltip_=(p))
   statusBar.add(filePath)
 
