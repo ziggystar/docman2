@@ -30,8 +30,8 @@ object Main extends CommandIOApp(
   override def main: Opts[IO[ExitCode]] = {
     val dbfile = Opts.option[Path]("dbfile", "data base file")
       .withDefault(Paths.get(System.getProperty("user.home", "")).resolve(".docman2/db.0.csv"))
-    val root = Opts.argument[Path]("root").validate("document root must be directory")(Files.isDirectory(_)).map(_.toFile)
-    val dbOpt = (dbfile,root).mapN(CSVStore.asResource[IO](_,_))
+    val root = Opts.argument[Path]("root").validate("document root must be directory")(Files.isDirectory(_))
+    val dbOpt = (root,dbfile map (_.toFile)).mapN(CSVStore.asResource[IO](_,_))
 
     dbOpt.map{db =>
       import monix.execution.Scheduler.Implicits.global
@@ -39,6 +39,8 @@ object Main extends CommandIOApp(
       implicit val reporter: UncaughtExceptionReporter = monix.execution.UncaughtExceptionReporter.default
       val body: Resource[IO, Component] = for{
         store <- db
+
+        _ <- Resource.liftF(store.reloadDB)
 
         initial <- Resource.liftF(store.getAllDocuments)
         _ <- Resource.liftF(IO(logger.info("initial: " + initial)))

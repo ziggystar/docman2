@@ -38,7 +38,7 @@ case class CSVStore[F[_]: Sync](root: Path, dbFile: File) extends DocumentStore[
 
   override def reloadDB: F[Unit] =
     for {
-      _ <- Sync[F].delay(logger.debug(s"load database from file $dbFile"))
+      _ <- Sync[F].delay(logger.info(s"load database from file $dbFile"))
       entries <- CSVHelpers.readFile(dbFile, createIfNotExists = false)
       _ <- Sync[F].delay(database = entries.toMap)
     } yield ()
