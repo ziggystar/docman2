@@ -8,13 +8,15 @@ import com.typesafe.scalalogging.StrictLogging
 import docman.frontend.swing.util.MigPanel
 import docman.frontend.swing.util._
 import org.apache.pdfbox.pdmodel.PDDocument
-import rx.lang.scala._
 import docman.utils.ResourceCache
+import monix.reactive.Observable
 import org.apache.pdfbox.rendering.{ImageType, PDFRenderer}
 
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.swing.{Button, Component, Dimension, Label}
-
+import cats.instances.all._
+import monix.execution.Scheduler.Implicits.global
+import monix.reactive.subjects.PublishSubject
 /**
  * @author Thomas Geier
  * @since 12/15/13
@@ -26,8 +28,8 @@ class PDFView(val pdfFile: Observable[Option[File]], val displayedPage: Observab
   private var page = 0
   //repaint if pdf or page changes
   pdfFile.combineLatest(displayedPage)
-    .distinctUntilChanged
-    .debounce(Duration("50ms")) //wait a bit until rendering the pdf
+    .distinctUntilChangedByKey(_.toString)
+    .debounce(FiniteDuration(50, "ms")) //wait a bit until rendering the pdf
     .foreach{
     case (f,p) =>
       file = f
@@ -53,11 +55,11 @@ object PDFViewer extends StrictLogging {
     file.foreach(f => logger.debug(s"changing file to $f"))
     new MigPanel{
       val maxPage: Observable[Int] = file.map(_.map(getNumPages).getOrElse(0))
-      val nextPage: Subject[Unit] = Subject[Unit]()
-      val prevPage: Subject[Unit] = Subject[Unit]()
+      val nextPage: PublishSubject[Unit] = PublishSubject[Unit]()
+      val prevPage: PublishSubject[Unit] = PublishSubject[Unit]()
       val nextPageButton: Button = Button("→")(nextPage.onNext(()))
       val prevPageButton: Button = Button("←")(prevPage.onNext(()))
-      val turnPage: Observable[Int] = nextPage.map(_ => +1) merge prevPage.map(_ => -1)
+      val turnPage: Observable[Int] = Observable(nextPage.map(_ => +1),prevPage.map(_ => -1)).merge
       val page: Observable[Int] =
         maxPage.switchMap(max =>
           turnPage.scan(1){case (current,diff) => math.max(1,math.min(max,current + diff))}.distinctUntilChanged

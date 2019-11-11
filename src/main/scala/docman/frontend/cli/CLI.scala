@@ -2,11 +2,12 @@ package docman.frontend.cli
 
 import java.nio.file.{Files, Path, Paths}
 
+import cats.data.EitherT
+import cats.effect.IO
 import cats.implicits._
 import com.monovore.decline._
 import docman.backend.csv.CSVStore
 import docman.backend.sidecar.SideCarRO
-import docman.frontend.swing.{AppMain, Config}
 
 object CLI extends CommandApp(
   name = "docman-cli",
@@ -32,7 +33,7 @@ object CLICommands {
     helpFlag = true
   ) {
     val root = Opts.argument[Path]("root").validate("document root must be directory")(Files.isDirectory(_))
-    (root,dbFileOpt.map(_.toFile)).mapN(Config).map(AppMain(_))
+    Opts.unit
   }
 
   def convertSCCommand: Command[Unit] = Command(
@@ -50,7 +51,7 @@ object CLICommands {
     val csvFile = dbFileOpt.validate("csv db file must not exist and will be created")(!Files.exists(_))
 
     val scDb: Opts[SideCarRO] = scRoot.map(r => SideCarRO(Seq(r.toFile -> true)))
-    val csvDb: Opts[CSVStore] = (csvRoot,csvFile.map(_.toFile)).mapN(CSVStore(_,_))
+    val csvDb: Opts[CSVStore[EitherT[IO,String,?]]] = (csvRoot,csvFile.map(_.toFile)).mapN(CSVStore(_,_))
 
     (scDb,csvDb).mapN { (sd, csv) =>
       val task = for{

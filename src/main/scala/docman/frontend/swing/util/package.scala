@@ -1,13 +1,11 @@
 package docman.frontend.swing
 
-import javax.swing.event.{DocumentEvent, DocumentListener}
 import javax.swing.{Action => _, _}
 import jiconfont.IconCode
 import jiconfont.swing.IconFontSwing
-import rx.lang.scala.subjects.BehaviorSubject
-import rx.lang.scala.{Observable, Subject}
+import monix.reactive.Observable
 
-import scala.swing.{Action, Button, Label, TextField}
+import scala.swing.{Action, Label}
 
 package object util {
 
@@ -26,29 +24,5 @@ package object util {
       a
     }
   }
-
-  def button(label: String): RControl[Unit] = {
-    val obs = Subject[Unit]()
-    val b = new Button(label){
-      action = new Action(s"$label"){
-        override def apply(): Unit = obs.onNext(())
-      }
-    }
-    RControl(b,obs)
-  }
-
-  def label(x: Observable[String]): Label = new Label{
-    x.foreach(this.text = _)
-  }
-
-  def textField(initial: String = "", columns: Int = -1): RControl[String] = {
-    val tf = if(columns < 1) new TextField(initial) else new TextField(initial, columns)
-    val s = BehaviorSubject[String](initial)
-    tf.peer.getDocument.addDocumentListener(new DocumentListener {
-      override def removeUpdate(e: DocumentEvent): Unit = s.onNext(tf.text)
-      override def changedUpdate(e: DocumentEvent): Unit = s.onNext(tf.text)
-      override def insertUpdate(e: DocumentEvent): Unit = s.onNext(tf.text)
-    })
-    RControl(tf,s)
-  }
+  def label(x: Observable[String]): Label = new Label("not implemented")
 }

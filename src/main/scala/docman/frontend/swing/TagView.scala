@@ -3,9 +3,13 @@ package docman.frontend.swing
 import java.awt.Color
 import java.awt.event.{MouseAdapter, MouseEvent}
 
+import cats.effect.IO
 import javax.swing.BorderFactory
 import javax.swing.border.BevelBorder
-import rx.lang.scala.{Observable, Subject, Subscription}
+import monix.execution.Ack
+import monix.reactive.Observable
+import monix.reactive.subjects.{PublishSubject, Subject}
+import monix.execution.Scheduler.Implicits.global
 import wraplayout.WrapLayout
 
 import scala.swing.{Dimension, FlowPanel, Label}
@@ -20,7 +24,7 @@ case class TagView(tags: Observable[Map[String,Int]], maxTags: Int = 20) extends
   preferredSize = new Dimension(300,100)
 
   val displayedTags: Observable[Seq[(String,Int)]] = tags.map(_.toSeq.sortBy(-_._2).take(maxTags))
-  val toggles: Subject[(String,Boolean)] = Subject[(String,Boolean)]
+  val toggles: PublishSubject[(String,Boolean)] = PublishSubject[(String,Boolean)]
   val selectecTags: Observable[Set[String]] = toggles.scan(Set[String]()){
     case (ts, (t,true)) => ts + t
     case (ts, (t,false)) => ts - t
@@ -43,7 +47,7 @@ case class TagView(tags: Observable[Map[String,Int]], maxTags: Int = 20) extends
     l
   }
 
-  val subscription: Subscription = displayedTags.subscribe { newTags =>
-    this.contents ++= newTags.map((makeLabel _).tupled)
+  val subscription = displayedTags.subscribe { newTags =>
+    (IO(this.contents ++= newTags.map((makeLabel _).tupled)).map(_ => Ack.Continue).unsafeToFuture())
   }
 }

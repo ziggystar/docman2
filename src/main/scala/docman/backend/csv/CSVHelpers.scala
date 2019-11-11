@@ -4,7 +4,7 @@ import java.io.{File, FileOutputStream}
 import java.nio.file.{Files, Path}
 
 import cats.data.EitherT
-import cats.effect.IO
+import cats.effect._
 import cats.instances.all._
 import cats.syntax.all._
 import docman.core.Document
@@ -18,25 +18,22 @@ object CSVHelpers {
     * @param db A CSV file that contains one doc per line.
     * @return The list of read entries.
     */
-  def readFile(db: File, createIfNotExists: Boolean): EitherT[IO,String,List[(Path,Document)]] = for{
-    _ <- touch(db)
-    res <- EitherT(
-      IO(scala.io.Source.fromFile(db, "UTF8"))
-        .bracket( bs =>
-          IO(bs.getLines())
-            .map(
-              _.toList
-                .map(l => parseLine(l).map(_.leftMap(f => new File(f).toPath)))
-                .sequence[Either[String,?],(Path,Document)]
-            )
-        )( bs =>
-          IO(bs.close())
-        )
-    )
+  def readFile[F[_]: Sync](db: File, createIfNotExists: Boolean): F[List[(Path,Document)]] = for{
+    _ <- touch[F](db)
+    res <- Resource.fromAutoCloseable(Sync[F].delay(scala.io.Source.fromFile(db, "UTF8")))
+      .use(bs =>
+        Sync[F].delay(bs.getLines())
+          .map(
+            _.toList
+              .map(l => parseLine(l).map(_.leftMap(f => new File(f).toPath)))
+              .sequence
+              .fold(m => throw new Throwable("parse error: " + m),identity)
+          )
+      )
   } yield res
 
-  def touch(f: File): EitherT[IO, String, Unit] =
-    EitherT(IO(Files.createFile(f.toPath)).unlessA(f.exists).attempt).leftMap("touching file: " + _.getLocalizedMessage)
+  def touch[F[_]: Sync](f: File): F[Unit] =
+    Sync[F].delay(Files.createFile(f.toPath)).unlessA(f.exists)
 
   /** Tries to relativize `file` against one path in `roots`.
     * @return Tuple of the matching root (first) and the relativized path of `file` against the found root.
@@ -51,16 +48,10 @@ object CSVHelpers {
     * @param data Meta data to write.
     * @return Unit.
     */
-  def write(db: File, docFile: Path, data: Document): EitherT[IO,String,Unit] = {
-    for{
-      _ <- EitherT(
-        IO(new FileOutputStream(db, true))
-          .bracket(fout => IO(fout.write((makeLine(docFile.toString, data) + "\n").getBytes("UTF8"))))(fout => IO(fout.close()))
-          .attempt
-          .map(_.leftMap(_.getMessage))
-      )
-    } yield Unit
-  }
+  def write[F[_]: Sync](db: File, docFile: Path, data: Document):F[Unit] =
+        Resource
+          .fromAutoCloseable(Sync[F].delay(new FileOutputStream(db, true)))
+          .use(fout => Sync[F].delay(fout.write((makeLine(docFile.toString, data) + "\n").getBytes("UTF8"))))
 
   def parseLine(line: String): Either[String,(String,Document)] = decode[(String,Document)](line).left.map(_.getMessage)
   def makeLine(f: String, d: Document): String = (f,d).asJson.noSpaces

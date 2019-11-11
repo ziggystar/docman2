@@ -29,9 +29,7 @@ addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.9")
 
 resolvers += Resolver.sonatypeRepo("releases")
 
-libraryDependencies += "io.reactivex" %% "rxscala" % "0.26.5"
-
-libraryDependencies += "io.monix" %% "monix" % "3.0.0"
+libraryDependencies += "io.monix" %% "monix" % "3.1.0"
 
 libraryDependencies += "org.typelevel" %% "cats-effect" % "2.0.0"
 
@@ -47,7 +45,7 @@ libraryDependencies ++= Seq(
 //scala-swing
 libraryDependencies += "org.scala-lang.modules" %% "scala-swing" % "2.0.2"
 
-libraryDependencies += "com.monovore" %% "decline" % "1.0.0"
+libraryDependencies += "com.monovore" %% "decline-effect" % "1.0.0"
 
 //configuration serialization
 libraryDependencies += "com.lihaoyi" %% "upickle" % "0.6.2"
@@ -83,17 +81,4 @@ lazy val root = (project in file(".")).
 
 mainClass in assembly := Some("docman.frontend.cli.CLI")
 
-enablePlugins(SbtProguard)
-
-proguardOptions in Proguard ++= Seq("-dontnote", "-ignorewarnings", "-dontobfuscate", "-dontoptimize")
-
-proguardVersion in Proguard := "6.2.0"
-
-proguardOptions in Proguard += ProguardOptions.keepMain("docman.frontend.cli.CLI")
-
-proguardMerge in Proguard := true
-
-javaOptions in (Proguard, proguard) := Seq("-Xmx1G")
-
-proguardMergeStrategies in Proguard += ProguardMerge.discard("META-INF/.*".r)
-
+addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
