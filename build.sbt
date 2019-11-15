@@ -13,7 +13,7 @@ name := "docman2"
  */
 version := "3.0.0-DEV"
 
-scalaVersion := "2.12.8"
+scalaVersion := "2.13.1"
 
 licenses += "GPLv3" -> url("https://www.gnu.org/licenses/gpl-3.0.html")
 

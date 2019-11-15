@@ -4,11 +4,14 @@ import java.awt.Component
 
 import cats.effect.{Resource, Sync}
 import com.typesafe.scalalogging.StrictLogging
-import javax.swing.table.{DefaultTableColumnModel, DefaultTableModel, TableCellRenderer, TableColumn}
+import javax.swing.table.{AbstractTableModel, TableColumn}
 import javax.swing.{JButton, JScrollPane, JTable}
 import monix.eval.Task
+import monix.execution.Cancelable
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive._
+
+import scala.collection.mutable.ArrayBuffer
 
 object rxtable extends StrictLogging {
 
@@ -19,6 +22,26 @@ object rxtable extends StrictLogging {
       c
     }
   }
+
+  def rxtablemodel[F[_]: Sync, Id, R](columns: IndexedSeq[Column[R]], rows: Observable[(Id,Option[R])], updates: Observer[(Id,Option[R])]): Resource[F,AbstractTableModel] =
+    for {
+      tm <- Resource.pure(
+        new AbstractTableModel {
+          val data: ArrayBuffer[(Id, R)] = ArrayBuffer.empty
+          override def getRowCount: Int = data.size
+          override def getColumnCount: Int = columns.size
+          override def getValueAt(rowIndex: Int, columnIndex: Int): AnyRef = columns(columnIndex).getValue(data(rowIndex)._2)
+          override def getColumnName(column: Int): String = columns(column).name
+          override def isCellEditable(rowIndex: Int, columnIndex: Int): Boolean = false
+        }
+      )
+      _ <- Resource.make[F,Cancelable](Sync[F].delay(rows.doOnNext(r => Task{
+        r match {
+          case (id, Some(r)) => tm.data.append((id,r))
+          case (id, None) => tm.data.filterNot(_._1 == id)
+        }
+      }).subscribe()))(c => Sync[F].delay(c.cancel()))
+    } yield tm
 
   /** Creates a table that displays and edits rows of type `R`. It does report updates to single rows and the current
     * selection.
@@ -32,28 +55,16 @@ object rxtable extends StrictLogging {
     * @return Swing table.
     */
   def apply[F[_]: Sync, Id,R]( columns: IndexedSeq[Column[R]],
-                               rows: Observable[IndexedSeq[(Id,R)]],
-                               selection: Observer[IndexedSeq[Id]] = Observer.empty,
-                               updates: Observer[(Id,R)] = Observer.empty
-                             ): Resource[F,Component] = {
-    val tableModel: DefaultTableModel = new DefaultTableModel(0, columns.size)
-    val columnModel: DefaultTableColumnModel = new DefaultTableColumnModel()
-    val column = new TableColumn(1, 10)
-    columns.zipWithIndex.map(ci => ci._1.tableColumn(ci._2)).foreach(columnModel.addColumn)
-    val table = new JTable(tableModel, columnModel)
-
-    Resource.make(
-      Sync[F].delay(
-        rows.doOnNext(xs => Task.eval {
-          logger.info(s"updating table content with ${xs.size} rows")
-          tableModel.setDataVector(
-            xs.map(x => columns.map(_.getValue(x._2))(collection.breakOut): Array[AnyRef])(collection.breakOut): Array[Array[AnyRef]],
-            columns.map(_.name)(collection.breakOut): Array[AnyRef]
-          )
-        }).subscribe)
-    )(c =>
-      Sync[F].delay(c.cancel())
-    ).map(_ => new JScrollPane(table))
-  }
+                               rows: Observable[(Id,Option[R])],
+                               selection: Observer[Set[Id]] = Observer.empty,
+                               updates: Observer[(Id,Option[R])] = Observer.empty
+                             ): Resource[F,Component] = for {
+    tm <- rxtablemodel(columns, rows, updates)
+    table = {
+      val t = new JTable(tm)
+      t.setAutoCreateRowSorter(true)
+      t
+    }
+  } yield new JScrollPane(table)
 
 }

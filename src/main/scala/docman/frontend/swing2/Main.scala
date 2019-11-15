@@ -10,17 +10,14 @@ import cats.implicits._
 import com.monovore.decline._
 import com.monovore.decline.effect._
 import com.typesafe.scalalogging.StrictLogging
-import javax.swing._
-import components._
 import docman.backend.csv.CSVStore
 import docman.core.Document
-import docman.frontend.swing.util.MigPanel
+import docman.frontend.swing2.components._
+import javax.swing._
 import monix.execution.{Ack, UncaughtExceptionReporter}
-import monix.reactive.subjects.{ReplaySubject, Var}
+import monix.reactive.subjects.ReplaySubject
 import monix.reactive.{Observable, _}
 import net.miginfocom.swing.MigLayout
-
-
 
 object Main extends CommandIOApp(
   name = "docman2-gui",
@@ -52,15 +49,30 @@ object Main extends CommandIOApp(
         })(rss => IO(rss._2.cancel())).map(_._1)
 
         table <- components.rxtable[IO,Path,Document](
-          columns = IndexedSeq(rxtable.Column("Absender"), rxtable.Column("Betreff")),
-          rows = (Observable(initial) ++ updates.mapEvalF(_ => store.getAllDocuments)).map(_.toIndexedSeq)
+          columns = IndexedSeq(
+            rxtable.Column("Absender", _.sender.orNull),
+            rxtable.Column("Betreff", _.subject.orNull),
+            rxtable.Column("Datum", _.date.orNull),
+            rxtable.Column("Tags", _.tags),
+            rxtable.Column("Seit", _.created),
+            rxtable.Column("Geändert", _.lastModified)
+          )
+          ,
+          rows = (Observable(initial) ++ updates.mapEvalF(_ => store.getAllDocuments)).flatMap(Observable.fromIterable).map(_.map(_.some))
         )
 
         button <- rxbutton[IO](label = Observable("Scan"), Observer.empty)
         panel <- Resource.liftF(IO{
           val p = new JPanel(new MigLayout())
-          p.add(table)
-          p.add(button)
+          val tb  = new JToolBar()
+          tb.setFloatable(false)
+          tb.add(button)
+          tb.addSeparator()
+          tb.add(new JLabel("Suche"))
+          tb.add(new JTextField(20))
+          p.add(tb, "grow,wrap")
+          val sp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, table, new JLabel("PDF VIEWER"))
+          p.add(sp, "grow, push, wrap")
           p
         })
       } yield panel
