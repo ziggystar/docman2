@@ -40,7 +40,9 @@ case class CSVStore[F[_]: Sync](root: Path, dbFile: File) extends DocumentStore[
     for {
       _ <- Sync[F].delay(logger.info(s"load database from file $dbFile"))
       entries <- CSVHelpers.readFile(dbFile, createIfNotExists = false)
-      _ <- Sync[F].delay(database = entries.toMap)
+      _ <- Sync[F].delay {
+        database = entries.toMap
+      }
     } yield ()
 
   override def scanForPDFs: F[Unit] = for {

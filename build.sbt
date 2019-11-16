@@ -23,9 +23,7 @@ startYear := Some(2013)
 
 description := "Application for managing PDF files with meta data"
 
-scalacOptions += "-Ypartial-unification"
-
-addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.9")
+addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full)
 
 resolvers += Resolver.sonatypeRepo("releases")
 
@@ -42,35 +40,27 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-parser"
 ).map(_ % circeVersion)
 
-//scala-swing
-libraryDependencies += "org.scala-lang.modules" %% "scala-swing" % "2.0.2"
-
 libraryDependencies += "com.monovore" %% "decline-effect" % "1.0.0"
 
-//configuration serialization
-libraryDependencies += "com.lihaoyi" %% "upickle" % "0.6.2"
-
-//logging
-libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
-
-//testing
-// https://mvnrepository.com/artifact/org.specs2/specs2-scalacheck
-libraryDependencies += "org.specs2" %% "specs2-scalacheck" % "4.8.0" % Test
-
-//********************* Java Dependencies ***************************//
+//pdfbox
+libraryDependencies += "org.apache.pdfbox" % "pdfbox" % "2.0.17"
 
 //MigLayout
 libraryDependencies += "com.miglayout" % "miglayout-swing" % "5.2"
 
 //icons
-libraryDependencies += "com.github.jiconfont" % "jiconfont-typicons" % "2.0.7.0"
+libraryDependencies += "com.github.jiconfont" % "jiconfont-font_awesome" % "4.7.0.1"
 
 libraryDependencies += "com.github.jiconfont" % "jiconfont-swing" % "1.0.1"
 
-libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3"
+//testing
+// https://mvnrepository.com/artifact/org.specs2/specs2-scalacheck
+libraryDependencies += "org.specs2" %% "specs2-scalacheck" % "4.8.0" % Test
 
-//pdfbox
-libraryDependencies += "org.apache.pdfbox" % "pdfbox" % "2.0.17"
+//logging
+libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
+
+libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3"
 
 lazy val root = (project in file(".")).
   enablePlugins(BuildInfoPlugin).

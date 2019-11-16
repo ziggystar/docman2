@@ -22,7 +22,7 @@ case class SideCarRO(roots: Seq[(File,Boolean)]) extends RODocumentStore[EitherT
 
   def loadSideCarFiles: IO[Map[File,Document]] = IO{
     (for{
-      (dir,rec) <- roots
+      (dir,rec) <- roots.toMap
       file <- SideCarRO.scanDir(dir,rec) if file.getName.endsWith("pdf")
       sidecar = {
         val n = file.getAbsolutePath
@@ -31,7 +31,7 @@ case class SideCarRO(roots: Seq[(File,Boolean)]) extends RODocumentStore[EitherT
       d = sidecar
         .flatMap(SideCarRO.readFile)
         .fold(e => {System.err.println(e); Document()}, identity)
-    } yield file -> d)(collection.breakOut)
+    } yield file -> d)
   }
 
   var docs: Map[File, Document] = loadSideCarFiles.unsafeRunSync()

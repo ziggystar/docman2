@@ -4,8 +4,9 @@ import java.awt.Component
 
 import cats.effect.{Resource, Sync}
 import com.typesafe.scalalogging.StrictLogging
+import javax.swing.event.{ListSelectionEvent, ListSelectionListener}
 import javax.swing.table.{AbstractTableModel, TableColumn}
-import javax.swing.{JButton, JScrollPane, JTable}
+import javax.swing.{JButton, JScrollPane, JTable, ListSelectionModel}
 import monix.eval.Task
 import monix.execution.Cancelable
 import monix.execution.Scheduler.Implicits.global
@@ -23,18 +24,18 @@ object rxtable extends StrictLogging {
     }
   }
 
-  def rxtablemodel[F[_]: Sync, Id, R](columns: IndexedSeq[Column[R]], rows: Observable[(Id,Option[R])], updates: Observer[(Id,Option[R])]): Resource[F,AbstractTableModel] =
+  class MyTableModel[Id,R](columns: IndexedSeq[Column[R]]) extends AbstractTableModel {
+    val data: ArrayBuffer[(Id, R)] = ArrayBuffer.empty
+    override def getRowCount: Int = data.size
+    override def getColumnCount: Int = columns.size
+    override def getValueAt(rowIndex: Int, columnIndex: Int): AnyRef = columns(columnIndex).getValue(data(rowIndex)._2)
+    override def getColumnName(column: Int): String = columns(column).name
+    override def isCellEditable(rowIndex: Int, columnIndex: Int): Boolean = false
+  }
+
+  def rxtablemodel[F[_]: Sync, Id, R](columns: IndexedSeq[Column[R]], rows: Observable[(Id,Option[R])], updates: Observer[(Id,Option[R])]): Resource[F,MyTableModel[Id,R]] =
     for {
-      tm <- Resource.pure(
-        new AbstractTableModel {
-          val data: ArrayBuffer[(Id, R)] = ArrayBuffer.empty
-          override def getRowCount: Int = data.size
-          override def getColumnCount: Int = columns.size
-          override def getValueAt(rowIndex: Int, columnIndex: Int): AnyRef = columns(columnIndex).getValue(data(rowIndex)._2)
-          override def getColumnName(column: Int): String = columns(column).name
-          override def isCellEditable(rowIndex: Int, columnIndex: Int): Boolean = false
-        }
-      )
+      tm <- Resource.pure(new MyTableModel[Id,R](columns))
       _ <- Resource.make[F,Cancelable](Sync[F].delay(rows.doOnNext(r => Task{
         r match {
           case (id, Some(r)) => tm.data.append((id,r))
@@ -56,13 +57,18 @@ object rxtable extends StrictLogging {
     */
   def apply[F[_]: Sync, Id,R]( columns: IndexedSeq[Column[R]],
                                rows: Observable[(Id,Option[R])],
-                               selection: Observer[Set[Id]] = Observer.empty,
+                               selection: Observer[IndexedSeq[Id]] = Observer.empty,
                                updates: Observer[(Id,Option[R])] = Observer.empty
                              ): Resource[F,Component] = for {
     tm <- rxtablemodel(columns, rows, updates)
     table = {
       val t = new JTable(tm)
+      t.setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
       t.setAutoCreateRowSorter(true)
+      t.getSelectionModel.addListSelectionListener((e: ListSelectionEvent) => {
+        if (!e.getValueIsAdjusting)
+          selection.onNext((e.getFirstIndex to e.getLastIndex).map(tm.data).map(_._1))
+      })
       t
     }
   } yield new JScrollPane(table)

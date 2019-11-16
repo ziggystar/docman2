@@ -15,7 +15,7 @@ import javafx.beans.property.{ReadOnlyObjectProperty, ReadOnlyObjectWrapper}
 import javafx.embed.swing.SwingFXUtils
 import javafx.scene.{Node, Scene}
 import javafx.scene.control.cell.TextFieldTableCell
-import javafx.scene.control.{TableColumn, TableView}
+import javafx.scene.control.{SelectionMode, TableColumn, TableView}
 import javafx.scene.image.{Image, ImageView, WritableImage}
 import javafx.scene.paint.Color
 import javafx.stage.Stage

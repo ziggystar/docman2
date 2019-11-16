@@ -15,7 +15,7 @@ import docman.core.Document
 import docman.frontend.swing2.components._
 import javax.swing._
 import monix.execution.{Ack, UncaughtExceptionReporter}
-import monix.reactive.subjects.ReplaySubject
+import monix.reactive.subjects.{PublishSubject, ReplaySubject}
 import monix.reactive.{Observable, _}
 import net.miginfocom.swing.MigLayout
 
@@ -48,6 +48,8 @@ object Main extends CommandIOApp(
           (rs: Observable[(Path,Document)],s)
         })(rss => IO(rss._2.cancel())).map(_._1)
 
+        selection <- Resource.pure[IO,PublishSubject[IndexedSeq[Path]]](PublishSubject[IndexedSeq[Path]]())
+
         table <- components.rxtable[IO,Path,Document](
           columns = IndexedSeq(
             rxtable.Column("Absender", _.sender.orNull),
@@ -58,9 +60,13 @@ object Main extends CommandIOApp(
             rxtable.Column("Geändert", _.lastModified)
           )
           ,
-          rows = (Observable(initial) ++ updates.mapEvalF(_ => store.getAllDocuments)).flatMap(Observable.fromIterable).map(_.map(_.some))
+          rows = (Observable(initial) ++ updates.mapEvalF(_ => store.getAllDocuments)).flatMap(Observable.fromIterable).map(_.map(_.some)),
+          selection = selection
         )
 
+        pdfview <- rxpdfview[IO](selection.map(_.headOption))
+
+        tagview <- tagview[IO](Observable(Set("test","tags")), Observer.dump("selected tags"))
         button <- rxbutton[IO](label = Observable("Scan"), Observer.empty)
         panel <- Resource.liftF(IO{
           val p = new JPanel(new MigLayout())
@@ -71,7 +77,10 @@ object Main extends CommandIOApp(
           tb.add(new JLabel("Suche"))
           tb.add(new JTextField(20))
           p.add(tb, "grow,wrap")
-          val sp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, table, new JLabel("PDF VIEWER"))
+          val left = new JPanel(new MigLayout)
+          left.add(table, "push, grow, wrap")
+          left.add(tagview, "growx")
+          val sp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, pdfview)
           p.add(sp, "grow, push, wrap")
           p
         })
