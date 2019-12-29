@@ -35,7 +35,7 @@ object Main extends CommandIOApp(
 
       implicit val reporter: UncaughtExceptionReporter = monix.execution.UncaughtExceptionReporter.default
       val body: Resource[IO, Component] = for{
-        store <- db
+        store: CSVStore[IO] <- db
 
         _ <- Resource.liftF(store.reloadDB)
 
@@ -64,7 +64,7 @@ object Main extends CommandIOApp(
           selection = selection
         )
 
-        pdfview <- rxpdfview[IO](selection.map(_.headOption))
+        pdfview <- rxpdfview[IO](selection.map(_.headOption).mapEvalF(of => of.map(store.access).sequence))
 
         tagview <- tagview[IO](Observable(Set("test","tags")), Observer.dump("selected tags"))
         button <- rxbutton[IO](label = Observable("Scan"), Observer.empty)
@@ -90,6 +90,8 @@ object Main extends CommandIOApp(
         (r,fin) <- body.allocated
         frame = new JFrame("docman2")
         _ <- IO {
+          //for faster pdf rendering
+          System.setProperty("sun.java2d.cmm", "sun.java2d.cmm.kcms.KcmsServiceProvider")
           frame.getContentPane.add(r)
           frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
           frame.setVisible(true)
