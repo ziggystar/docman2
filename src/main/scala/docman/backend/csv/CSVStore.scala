@@ -53,14 +53,13 @@ case class CSVStore[F[_]: Sync](root: Path, dbFile: File) extends DocumentStore[
             10,
             (p: Path, bfa: BasicFileAttributes) => bfa.isRegularFile && p.toString.toLowerCase.endsWith(".pdf"))
             .iterator().asScala.toIndexedSeq
-            .map(root.relativize)
             .filterNot(database.contains)
         )
     newPDFsNormalized = newPDFs.map(normalizeFoundPath)
     _ <- newPDFsNormalized.map(f => updateDocument(f, Document())).toList.sequence
   } yield ()
 
-  override def getAllDocuments: F[Seq[(Id, Doc)]] = Sync[F].pure(database.toSeq)
+  override def getAllDocuments: F[Seq[(Id, Doc)]] = Sync[F].delay(database.toSeq)
 
   override def access(id: Id): F[Content] = Sync[F].pure(root.resolve(id).toRealPath().toFile)
 }

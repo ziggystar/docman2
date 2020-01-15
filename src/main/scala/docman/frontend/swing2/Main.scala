@@ -39,8 +39,13 @@ object Main extends CommandIOApp(
 
         _ <- Resource.liftF(store.reloadDB)
 
-        initial <- Resource.liftF(store.getAllDocuments)
-        _ <- Resource.liftF(IO(logger.info("initial: " + initial)))
+        (scanTrigger, scanUpdates) <- Resource.make(IO{
+          val s = PublishSubject[Unit]()
+          val updts = s.doOnNextF(_ => store.scanForPDFs)
+          (s, updts, updts.subscribe())
+        })(sc => IO{sc._3.cancel()}).map(x => (x._1,x._2))
+
+        button <- rxbutton[IO](label = Observable("Scan"), scanTrigger)
 
         updates <- Resource.make(IO{
           val rs = ReplaySubject[(Path,Document)]()
@@ -60,14 +65,17 @@ object Main extends CommandIOApp(
             rxtable.Column("Geändert", _.lastModified)
           )
           ,
-          rows = (Observable(initial) ++ updates.mapEvalF(_ => store.getAllDocuments)).flatMap(Observable.fromIterable).map(_.map(_.some)),
+          rows = (Observable(Observable.pure(()), updates.map(_ => ()), scanUpdates)
+            .merge.mapEvalF(_ => store.getAllDocuments))
+            .flatMap(Observable.fromIterable)
+            .map(_.map(_.some)),
           selection = selection
         )
 
         pdfview <- rxpdfview[IO](selection.map(_.headOption).mapEvalF(of => of.map(store.access).sequence))
 
         tagview <- tagview[IO](Observable(Set("test","tags")), Observer.dump("selected tags"))
-        button <- rxbutton[IO](label = Observable("Scan"), Observer.empty)
+
         panel <- Resource.liftF(IO{
           val p = new JPanel(new MigLayout())
           val tb  = new JToolBar()
