@@ -21,38 +21,60 @@ import org.apache.pdfbox.rendering.{ImageType, PDFRenderer}
 package object components extends StrictLogging {
   IconFontSwing.register(FontAwesome.getIconFont)
 
+  case class PdfPages[F[_]: Sync](pdfFile: Observable[Option[File]],
+                                  page: Observable[Int],
+                                  numPages: Observer[Option[Int]],
+                                  pdDoc: Observer[PDDocument]
+                                 ) extends Resource[F, Unit]{
+
+  }
+
+  def pdfPages[F[_]: Sync](pdfFile: Observable[Option[File]], Observer)
   def rxpdfview[F[_] : Sync](pdf: Observable[Option[File]]): Resource[F, Component] = for {
+    toolbar <- new JToolBar("pdf-control").pure[Resource[F, *]]
+      .evalTap(tb => Sync[F].delay {
+        tb.setFloatable(false)
+      })
+
+    pdfpanel <- new JPanel(true) {
+      var currentPage: Option[PDDocument] = None
+
+      override protected def paintComponent(g: Graphics) {
+        g.clearRect(g.getClipBounds.x, g.getClipBounds.y, g.getClipBounds.width, g.getClipBounds.height)
+        currentPage.foreach { pd =>
+          val img = new PDFRenderer(pd).renderImageWithDPI(0, 90, ImageType.RGB)
+          val (imgW, imgH) = (img.getWidth(this), img.getHeight(this))
+          val (cW, cH) = (this.getWidth, this.getHeight)
+          val scale = math.min(cW / imgW.toDouble, cH / imgH.toDouble)
+          g.drawImage(img.getScaledInstance((scale * imgW).toInt, (scale * imgH).toInt, Image.SCALE_SMOOTH), 0, 0, null)
+        }
+      }
+    }.pure[Resource[F, *]]
+
     panel <- new JPanel(new MigLayout).pure[Resource[F, *]]
+      .evalTap(panel => Sync[F].delay {
+        panel.add(toolbar)
+      })
+      .evalTap(panel => Sync[F].delay {
+        panel.add(pdfpanel)
+      })
     _ <- Resource.make(Sync[F].delay {
       val tb = new JToolBar()
       tb.setFloatable(false)
       Seq(FontAwesome.ANGLE_DOUBLE_LEFT, FontAwesome.ANGLE_LEFT, FontAwesome.ANGLE_RIGHT, FontAwesome.ANGLE_DOUBLE_RIGHT)
         .map(i => new JButton(IconFontSwing.buildIcon(i, 16)))
         .foreach(tb.add)
+
       panel.add(tb, "pushx, growx, wrap")
 
-      val pane = new JPanel(true) {
-        var currentPage: Option[PDDocument] = None
 
-        override protected def paintComponent(g: Graphics) {
-          g.clearRect(g.getClipBounds.x, g.getClipBounds.y, g.getClipBounds.width, g.getClipBounds.height)
-          currentPage.foreach { pd =>
-            val img = new PDFRenderer(pd).renderImageWithDPI(0, 90, ImageType.RGB)
-            val (imgW, imgH) = (img.getWidth(this), img.getHeight(this))
-            val (cW, cH) = (this.getWidth, this.getHeight)
-            val scale = math.min(cW / imgW.toDouble, cH / imgH.toDouble)
-            g.drawImage(img.getScaledInstance((scale * imgW).toInt, (scale * imgH).toInt, Image.SCALE_SMOOTH), 0, 0, null)
-          }
-        }
-      }
-
-      panel.add(pane, "push, grow")
+      panel.add(panel, "push, grow")
 
       val s = pdf.doOnNext(x => Task {
         logger.info(s"loading pdf for display: $x")
-        pane.currentPage.foreach(_.close())
-        pane.currentPage = x.map(PDDocument.load)
-        pane.repaint()
+        pdfPanel.currentPage.foreach(_.close())
+        pdfPanel.currentPage = x.map(PDDocument.load)
+        pdfPanel.repaint()
       }).subscribe()
       Cancelable.collection(s, Cancelable(() => pane.currentPage.foreach(_.close())))
     })(s => Sync[F].delay {
