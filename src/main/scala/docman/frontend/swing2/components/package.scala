@@ -25,31 +25,36 @@ package object components extends StrictLogging {
                                   page: Observable[Int],
                                   numPages: Observer[Option[Int]],
                                   pdDoc: Observer[PDDocument]
-                                 ) extends Resource[F, Unit]{
+                                 )
 
-  }
+  def loadPDF(pdfFile: Observable[Option[File]]): Observable[Option[PDDocument]] =
+    pdfFile.flatMap(of => Observable.resource(Task(of.map(PDDocument.load)))(pd => Task(pd.foreach(_.close()))))
+    .doOnNext(of => Task(logger.info("loading new PDDocument")))
 
-  def pdfPages[F[_]: Sync](pdfFile: Observable[Option[File]], Observer)
   def rxpdfview[F[_] : Sync](pdf: Observable[Option[File]]): Resource[F, Component] = for {
     toolbar <- new JToolBar("pdf-control").pure[Resource[F, *]]
       .evalTap(tb => Sync[F].delay {
         tb.setFloatable(false)
       })
 
-    pdfpanel <- new JPanel(true) {
-      var currentPage: Option[PDDocument] = None
+    pdfpanel <- Resource.make(Sync[F].delay{
+      new JPanel(true) {
+        var currentPage: Option[PDDocument] = None
 
-      override protected def paintComponent(g: Graphics) {
-        g.clearRect(g.getClipBounds.x, g.getClipBounds.y, g.getClipBounds.width, g.getClipBounds.height)
-        currentPage.foreach { pd =>
-          val img = new PDFRenderer(pd).renderImageWithDPI(0, 90, ImageType.RGB)
-          val (imgW, imgH) = (img.getWidth(this), img.getHeight(this))
-          val (cW, cH) = (this.getWidth, this.getHeight)
-          val scale = math.min(cW / imgW.toDouble, cH / imgH.toDouble)
-          g.drawImage(img.getScaledInstance((scale * imgW).toInt, (scale * imgH).toInt, Image.SCALE_SMOOTH), 0, 0, null)
+        val subscription: Cancelable = loadPDF(pdf).doOnNext(of => Task{currentPage = of}).subscribe()
+
+        override protected def paintComponent(g: Graphics) {
+          g.clearRect(g.getClipBounds.x, g.getClipBounds.y, g.getClipBounds.width, g.getClipBounds.height)
+          currentPage.foreach { pd =>
+            val img = new PDFRenderer(pd).renderImageWithDPI(0, 90, ImageType.RGB)
+            val (imgW, imgH) = (img.getWidth(this), img.getHeight(this))
+            val (cW, cH) = (this.getWidth, this.getHeight)
+            val scale = math.min(cW / imgW.toDouble, cH / imgH.toDouble)
+            g.drawImage(img.getScaledInstance((scale * imgW).toInt, (scale * imgH).toInt, Image.SCALE_SMOOTH), 0, 0, null)
+          }
         }
       }
-    }.pure[Resource[F, *]]
+    })(jp => Sync[F].delay(jp.subscription.cancel()))
 
     panel <- new JPanel(new MigLayout).pure[Resource[F, *]]
       .evalTap(panel => Sync[F].delay {
@@ -58,28 +63,6 @@ package object components extends StrictLogging {
       .evalTap(panel => Sync[F].delay {
         panel.add(pdfpanel)
       })
-    _ <- Resource.make(Sync[F].delay {
-      val tb = new JToolBar()
-      tb.setFloatable(false)
-      Seq(FontAwesome.ANGLE_DOUBLE_LEFT, FontAwesome.ANGLE_LEFT, FontAwesome.ANGLE_RIGHT, FontAwesome.ANGLE_DOUBLE_RIGHT)
-        .map(i => new JButton(IconFontSwing.buildIcon(i, 16)))
-        .foreach(tb.add)
-
-      panel.add(tb, "pushx, growx, wrap")
-
-
-      panel.add(panel, "push, grow")
-
-      val s = pdf.doOnNext(x => Task {
-        logger.info(s"loading pdf for display: $x")
-        pdfPanel.currentPage.foreach(_.close())
-        pdfPanel.currentPage = x.map(PDDocument.load)
-        pdfPanel.repaint()
-      }).subscribe()
-      Cancelable.collection(s, Cancelable(() => pane.currentPage.foreach(_.close())))
-    })(s => Sync[F].delay {
-      s.cancel()
-    })
   } yield panel
 
   def rxlabel[F[_] : Sync](text: Observable[String]): Resource[F, Component] = Resource.make(
