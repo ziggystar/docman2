@@ -25,10 +25,10 @@ package object components extends StrictLogging {
   IconFontSwing.register(FontAwesome.getIconFont)
 
   def loadPDF(pdfFile: Observable[Option[File]]): Observable[Option[PDDocument]] =
-    pdfFile.flatMap(of => Observable.resource(Task {
+    pdfFile.flatMap(of => Observable.resource(Task{
       logger.info(s"loading pdf from $of")
       of.map(PDDocument.load)
-    })(pd => Task(pd.foreach(_.close()))))
+    }.executeAsync)(pd => Task(pd.foreach(_.close()))))
     .doOnNext(of => Task(logger.debug(s"loading new PDDocument")))
 
   def rxpdfview[F[_] : Sync](pdf: Observable[Option[File]]): Resource[F, Component] = for {
@@ -46,7 +46,7 @@ package object components extends StrictLogging {
             currentPage := of.map{pd => new PDFRenderer(pd).renderImageWithDPI(0, 90, ImageType.RGB)}
             logger.debug(s"rendered pdf (${currentPage.get().map(bi => (bi.getWidth, bi.getHeight()))}")
             outer.repaint()
-          }).subscribe()
+          }.executeAsync).subscribe()
 
         override protected def paintComponent(g: Graphics) {
           g.clearRect(g.getClipBounds.x, g.getClipBounds.y, g.getClipBounds.width, g.getClipBounds.height)

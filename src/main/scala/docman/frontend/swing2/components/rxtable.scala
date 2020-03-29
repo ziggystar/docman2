@@ -33,7 +33,9 @@ object rxtable extends StrictLogging {
     override def isCellEditable(rowIndex: Int, columnIndex: Int): Boolean = false
   }
 
-  def rxtablemodel[F[_]: Sync, Id, R](columns: IndexedSeq[Column[R]], rows: Observable[(Id,Option[R])], updates: Observer[(Id,Option[R])]): Resource[F,MyTableModel[Id,R]] =
+  def rxtablemodel[F[_]: Sync, Id, R](columns: IndexedSeq[Column[R]],
+                                      rows: Observable[(Id,Option[R])],
+                                      updates: Observer[(Id,Option[R])]): Resource[F,MyTableModel[Id,R]] =
     for {
       tm <- Resource.pure(new MyTableModel[Id,R](columns))
       _ <- Resource.make[F,Cancelable](Sync[F].delay(rows.doOnNext(r => Task{
@@ -57,7 +59,7 @@ object rxtable extends StrictLogging {
     */
   def apply[F[_]: Sync, Id,R]( columns: IndexedSeq[Column[R]],
                                rows: Observable[(Id,Option[R])],
-                               selection: Observer[IndexedSeq[Id]] = Observer.empty,
+                               selection: Observer[Id] = Observer.empty,
                                updates: Observer[(Id,Option[R])] = Observer.empty
                              ): Resource[F,Component] = for {
     tm <- rxtablemodel(columns, rows, updates)
@@ -67,7 +69,7 @@ object rxtable extends StrictLogging {
       t.setAutoCreateRowSorter(true)
       t.getSelectionModel.addListSelectionListener((e: ListSelectionEvent) => {
         if (!e.getValueIsAdjusting)
-          selection.onNext((e.getFirstIndex to e.getLastIndex).map(tm.data).map(_._1))
+          selection.onNext(tm.data(t.getSelectedRow)._1)
       })
       t
     }

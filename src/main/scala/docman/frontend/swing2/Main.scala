@@ -53,7 +53,7 @@ object Main extends CommandIOApp(
           (rs: Observable[(Path,Document)],s)
         })(rss => IO(rss._2.cancel())).map(_._1)
 
-        selection <- Resource.pure[IO,PublishSubject[IndexedSeq[Path]]](PublishSubject[IndexedSeq[Path]]())
+        selection <- PublishSubject[Path]().pure[Resource[IO,*]]
 
         table <- components.rxtable[IO,Path,Document](
           columns = IndexedSeq(
@@ -63,8 +63,7 @@ object Main extends CommandIOApp(
             rxtable.Column("Tags", _.tags),
             rxtable.Column("Seit", _.created),
             rxtable.Column("Geändert", _.lastModified)
-          )
-          ,
+          ),
           rows = (Observable(Observable.pure(()), updates.map(_ => ()), scanUpdates)
             .merge.mapEvalF(_ => store.getAllDocuments))
             .flatMap(Observable.fromIterable)
@@ -72,7 +71,7 @@ object Main extends CommandIOApp(
           selection = selection
         )
 
-        pdfview <- rxpdfview[IO](selection.map(_.headOption).mapEvalF(of => of.map(store.access).sequence))
+        pdfview <- rxpdfview[IO](selection.mapEvalF(store.access).map(Option(_)))
 
         tagview <- tagview[IO](Observable(Set("test","tags")), Observer.dump("selected tags"))
 
