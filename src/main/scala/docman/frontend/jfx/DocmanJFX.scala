@@ -6,24 +6,24 @@ import java.time.format.DateTimeFormatter
 
 import cats.data.EitherT
 import cats.effect.IO
-import docman.core.{Document, RODocumentStore}
 import docman.backend.sidecar.SideCarRO
+import docman.core.{Document, RODocumentStore}
+import docman.frontend.jfx.util._
 import docman.utils.ResourceCache
-import util._
 import javafx.application.Application
 import javafx.beans.property.{ReadOnlyObjectProperty, ReadOnlyObjectWrapper}
 import javafx.embed.swing.SwingFXUtils
-import javafx.scene.{Node, Scene}
 import javafx.scene.control.cell.TextFieldTableCell
-import javafx.scene.control.{SelectionMode, TableColumn, TableView}
-import javafx.scene.image.{Image, ImageView, WritableImage}
+import javafx.scene.control.{TableColumn, TableView}
+import javafx.scene.image.{ImageView, WritableImage}
 import javafx.scene.paint.Color
+import javafx.scene.{Node, Scene}
 import javafx.stage.Stage
 import javafx.util.StringConverter
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.rendering.{ImageType, PDFRenderer}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class DocmanJFX extends Application {
   override def start(primaryStage: Stage): Unit = {

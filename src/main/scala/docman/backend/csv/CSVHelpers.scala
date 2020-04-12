@@ -3,7 +3,6 @@ package docman.backend.csv
 import java.io.{File, FileOutputStream}
 import java.nio.file.{Files, Path}
 
-import cats.data.EitherT
 import cats.effect._
 import cats.instances.all._
 import cats.syntax.all._

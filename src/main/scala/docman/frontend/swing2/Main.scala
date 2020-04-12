@@ -14,7 +14,7 @@ import docman.backend.csv.CSVStore
 import docman.core.Document
 import docman.frontend.swing2.components._
 import javax.swing._
-import monix.execution.{Ack, UncaughtExceptionReporter}
+import monix.execution.Ack
 import monix.reactive.subjects.{PublishSubject, ReplaySubject}
 import monix.reactive.{Observable, _}
 import net.miginfocom.swing.MigLayout
@@ -33,7 +33,7 @@ object Main extends CommandIOApp(
     dbOpt.map{db =>
       import monix.execution.Scheduler.Implicits.global
 
-      implicit val reporter: UncaughtExceptionReporter = monix.execution.UncaughtExceptionReporter.default
+//      implicit val reporter: UncaughtExceptionReporter = monix.execution.UncaughtExceptionReporter.default
       val body: Resource[IO, Component] = for{
         store: CSVStore[IO] <- db
 
@@ -71,7 +71,7 @@ object Main extends CommandIOApp(
           selection = selection
         )
 
-        pdfview <- rxpdfview[IO](selection.mapEvalF(store.access).map(Option(_)))
+        pdfview <- pdfview[IO](selection.mapEvalF(store.access).map(Option(_)))
 
         tagview <- tagview[IO](Observable(Set("test","tags")), Observer.dump("selected tags"))
 

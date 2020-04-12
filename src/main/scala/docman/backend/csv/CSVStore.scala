@@ -11,7 +11,7 @@ import cats.syntax.all._
 import com.typesafe.scalalogging.StrictLogging
 import docman.core.{Document, DocumentStore}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 case class CSVStore[F[_]: Sync](root: Path, dbFile: File) extends DocumentStore[F] with StrictLogging {
   override type Content = File

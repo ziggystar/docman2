@@ -3,6 +3,8 @@ package docman.utils
 import scala.language.reflectiveCalls
 import scala.util.Try
 
+import scala.jdk.CollectionConverters._
+
 /** Manages a pool of opened resources. Currently it's hard to prevent escaping of references. Maybe the return type
   * of `get` should be changed. Also async operations might be useful.
   * @author Thomas Geier
@@ -22,7 +24,6 @@ class ResourceCache[K,V <: {def close(): Unit}](val open: K => V, val size: Int 
 
   private def create(k: K): Try[V] = {
     if(cache.size == size){
-      import collection.JavaConverters._
       val toRemove: K = lastAccessed.entrySet.asScala.minBy(_.getValue).getKey
       cache.get(toRemove).foreach(_.close())
       cache.remove(toRemove)

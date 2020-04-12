@@ -1,7 +1,5 @@
 package docman
 
-import java.util.Properties
-
 import com.typesafe.scalalogging.LazyLogging
 
 

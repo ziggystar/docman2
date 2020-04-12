@@ -55,7 +55,7 @@ object SideCarRO {
   }
   val fields: Map[String,Field[_]] = Seq[Field[_]](
       Field[String]("SUBJECT", identity, s => _.copy(subject = s.some)),
-      Field[Either[String,LocalDate]]("DATE", SideCarHelpers.dateReader, ed => _.copy(date = ed.right.toOption)),
+      Field[Either[String,LocalDate]]("DATE", SideCarHelpers.dateReader, ed => _.copy(date = ed.toOption)),
       Field[Set[String]]("TAGS", _.split(',').toSet, ts => _.copy(tags = ts)),
       Field[String]("AUTHOR", identity[String], a => _.copy(sender = a.some) )
     )

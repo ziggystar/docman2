@@ -4,9 +4,9 @@ import java.awt.Component
 
 import cats.effect.{Resource, Sync}
 import com.typesafe.scalalogging.StrictLogging
-import javax.swing.event.{ListSelectionEvent, ListSelectionListener}
+import javax.swing.{JScrollPane, JTable, ListSelectionModel}
+import javax.swing.event.ListSelectionEvent
 import javax.swing.table.{AbstractTableModel, TableColumn}
-import javax.swing.{JButton, JScrollPane, JTable, ListSelectionModel}
 import monix.eval.Task
 import monix.execution.Cancelable
 import monix.execution.Scheduler.Implicits.global
@@ -74,5 +74,4 @@ object rxtable extends StrictLogging {
       t
     }
   } yield new JScrollPane(table)
-
 }

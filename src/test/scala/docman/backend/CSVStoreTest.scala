@@ -1,13 +1,12 @@
 package docman.backend
 
-import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime, ZoneId}
 import java.util.Date
 
-import docman.core.Document
-import org.scalacheck.{Arbitrary, Gen}
-import org.specs2.ScalaCheck
-
 import docman.backend.csv.CSVHelpers._
+import docman.core.Document
+import org.scalacheck.Arbitrary
+import org.specs2.ScalaCheck
 
 trait DocmanArbitraries {self: ScalaCheck =>
   import Arbitrary._
@@ -33,9 +32,8 @@ trait DocmanArbitraries {self: ScalaCheck =>
 }
 class CSVStoreTest extends org.specs2.Specification with ScalaCheck with DocmanArbitraries {
 
-  override def is = s2"""
-                       CSVStore parseLine · makeLine == identity: $writeParse
-                       CSVStore makeLine produces no newlines: $noNewlines
+  override def is = s2"""CSVStore parseLine · makeLine == identity: $writeParse
+                         CSVStore makeLine produces no newlines: $noNewlines
     """
 
   def writeParse = prop { (s: String, doc: Document) =>

@@ -32,7 +32,6 @@ object CLICommands {
     header = "run swing graphical user interface",
     helpFlag = true
   ) {
-    val root = Opts.argument[Path]("root").validate("document root must be directory")(Files.isDirectory(_))
     Opts.unit
   }
 
@@ -44,7 +43,6 @@ object CLICommands {
     val scRoot = Opts.option[Path]("sc-root", "to scan for sidecar files", "r")
       .withDefault(Paths.get("."))
       .validate("sc-root is not a directory")(Files.isDirectory(_))
-    val scSuffix = Opts.option[String]("sc-suffix", "file suffix for sidecar files", "s").withDefault(".smd")
     val csvRoot = Opts.option[Path]("csv-root", "root for relative paths from csv file", "c")
       .withDefault(Paths.get("."))
       .validate("csv-root is not a directory")(Files.isDirectory(_))

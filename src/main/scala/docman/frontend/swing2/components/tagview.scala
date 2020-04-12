@@ -3,7 +3,7 @@ package docman.frontend.swing2.components
 import java.awt.Component
 
 import cats.effect.{Resource, Sync}
-import javax.swing.{BorderFactory, JLabel}
+import javax.swing.JLabel
 import monix.reactive.{Observable, Observer}
 
 

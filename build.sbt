@@ -72,3 +72,16 @@ lazy val root = (project in file(".")).
 mainClass in assembly := Some("docman.frontend.cli.CLI")
 
 addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
+
+scalacOptions ++= Seq(
+  "-encoding", "utf8",
+  "-feature",
+  "-deprecation",
+  "-unchecked",
+  "-Xlint",
+  "-Xfatal-warnings",
+  "-language:implicitConversions",
+  "-language:higherKinds",
+  "-language:existentials",
+  "-language:postfixOps"
+)
