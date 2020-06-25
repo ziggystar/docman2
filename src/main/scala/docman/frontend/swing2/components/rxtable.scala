@@ -30,8 +30,8 @@ object rxtable extends StrictLogging {
     def setRow(r: (Id, R)): Unit = {
       data.view.zipWithIndex.find(_._1._1 == r._1) match {
         case None =>
-          data.addOne(r)
-          fireTableRowsInserted(data.length, data.length)
+          data.insert(0,r)
+          fireTableRowsInserted(0, 0)
         case Some((_,i)) =>
           data.update(i, r)
           fireTableRowsUpdated(i,i)

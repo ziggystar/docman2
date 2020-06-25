@@ -18,7 +18,7 @@ trait RODocumentStore[F[_]] {
   type Id
   type Doc = Document
   def reloadDB: F[Unit]
-  def scanForPDFs: F[Unit]
+  def scanForPDFs: F[Seq[Id]]
   def getAllDocuments: F[Seq[(Id,Doc)]]
   def access(id: Id): F[Content]
 }

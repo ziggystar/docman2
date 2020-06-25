@@ -39,9 +39,13 @@ object Main extends CommandIOApp(
 
         _ <- Resource.liftF(store.reloadDB)
 
-        (scanTrigger, scanUpdates) <- Resource.make(IO{
+        (scanTrigger, scanUpdates: Observable[Seq[(store.Id, store.Doc)]]) <- Resource.make(IO{
           val s = PublishSubject[Unit]()
-          val updts = s.doOnNextF(_ => store.scanForPDFs)
+          val updts = s.mapEvalF(_ => for{
+            found <- store.scanForPDFs
+            _ <- IO(logger.info(s"found ${found.size} new documents"))
+            newState <- store.getAllDocuments
+          } yield newState)
           (s, updts, updts.subscribe())
         })(sc => IO{sc._3.cancel()}).map(x => (x._1,x._2))
 
@@ -64,10 +68,13 @@ object Main extends CommandIOApp(
             rxtable.Column("Seit", _.created),
             rxtable.Column("Geändert", _.lastModified)
           ),
-          rows = (Observable(Observable.pure(()), updates.map(_ => ()), scanUpdates)
-            .merge.mapEvalF(_ => store.getAllDocuments))
-            .flatMap(Observable.fromIterable)
-            .map(_.map(_.some)),
+          rows =
+            Observable(
+              (Observable(Observable.pure(()), updates.map(_ => ())).merge.mapEvalF(_ => store.getAllDocuments)),
+              scanUpdates)
+              .merge
+              .flatMap(Observable.fromIterable)
+              .map(_.map(_.some)),
           selection = selection
         )
 

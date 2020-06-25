@@ -45,7 +45,7 @@ case class CSVStore[F[_]: Sync](root: Path, dbFile: File, createDbIfNotExists: B
       }
     } yield ()
 
-  override def scanForPDFs: F[Unit] = for {
+  override def scanForPDFs: F[Seq[Id]] = for {
     _ <- Sync[F].delay(logger.debug(s"scan for new PDFs under $root"))
     newPDFs <- Sync[F].delay(
           Files.find(
@@ -57,7 +57,7 @@ case class CSVStore[F[_]: Sync](root: Path, dbFile: File, createDbIfNotExists: B
         )
     newPDFsNormalized = newPDFs.map(normalizeFoundPath)
     _ <- newPDFsNormalized.map(f => updateDocument(f, Document())).toList.sequence
-  } yield ()
+  } yield newPDFsNormalized
 
   override def getAllDocuments: F[Seq[(Id, Doc)]] = Sync[F].delay(database.toSeq)
 
