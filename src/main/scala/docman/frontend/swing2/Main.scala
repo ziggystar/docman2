@@ -61,10 +61,10 @@ object Main extends CommandIOApp(
 
         table <- components.rxtable[IO,Path,Document](
           columns = IndexedSeq(
-            rxtable.Column("Absender", _.sender.orNull),
-            rxtable.Column("Betreff", _.subject.orNull),
-            rxtable.Column("Datum", _.date.orNull),
-            rxtable.Column("Tags", _.tags),
+            rxtable.Column("Absender", _.sender.orNull, prefWidth = 100.some, isEditable = true),
+            rxtable.Column("Betreff", _.subject.orNull, prefWidth = 300.some, isEditable = true),
+            rxtable.Column("Datum", _.date.orNull, prefWidth = 100.some, isEditable = true),
+            rxtable.Column("Tags", _.tags, isEditable = true),
             rxtable.Column("Seit", _.created),
             rxtable.Column("Geändert", _.lastModified)
           ),
@@ -75,7 +75,8 @@ object Main extends CommandIOApp(
               .merge
               .flatMap(Observable.fromIterable)
               .map(_.map(_.some)),
-          selection = selection
+          selection = selection,
+          updates = Observer.dump("change")
         )
 
         pdfview <- pdfview[IO](selection.mapEvalF(store.access).map(Option(_)))
