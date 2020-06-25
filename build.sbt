@@ -13,7 +13,7 @@ name := "docman2"
  */
 version := "3.0.0-DEV"
 
-scalaVersion := "2.13.1"
+scalaVersion := "2.13.2"
 
 licenses += "GPLv3" -> url("https://www.gnu.org/licenses/gpl-3.0.html")
 
@@ -27,12 +27,12 @@ addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVers
 
 resolvers += Resolver.sonatypeRepo("releases")
 
-libraryDependencies += "io.monix" %% "monix" % "3.1.0"
+libraryDependencies += "io.monix" %% "monix" % "3.2.2"
 
-libraryDependencies += "org.typelevel" %% "cats-effect" % "2.0.0"
+libraryDependencies += "org.typelevel" %% "cats-effect" % "2.1.3"
 
 // https://mvnrepository.com/artifact/io.circe/circe-core
-val circeVersion = "0.12.3"
+val circeVersion = "0.13.0"
 
 libraryDependencies ++= Seq(
   "io.circe" %% "circe-core",
@@ -40,10 +40,15 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-parser"
 ).map(_ % circeVersion)
 
-libraryDependencies += "com.monovore" %% "decline-effect" % "1.0.0"
+libraryDependencies += "com.monovore" %% "decline-effect" % "1.2.0"
+
+//logging
+libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
+
+//java stuff below
 
 //pdfbox
-libraryDependencies += "org.apache.pdfbox" % "pdfbox" % "2.0.17"
+libraryDependencies += "org.apache.pdfbox" % "pdfbox" % "2.0.20"
 
 //MigLayout
 libraryDependencies += "com.miglayout" % "miglayout-swing" % "5.2"
@@ -55,10 +60,7 @@ libraryDependencies += "com.github.jiconfont" % "jiconfont-swing" % "1.0.1"
 
 //testing
 // https://mvnrepository.com/artifact/org.specs2/specs2-scalacheck
-libraryDependencies += "org.specs2" %% "specs2-scalacheck" % "4.8.0" % Test
-
-//logging
-libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
+libraryDependencies += "org.specs2" %% "specs2-scalacheck" % "4.10.0" % Test
 
 libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3"
 
