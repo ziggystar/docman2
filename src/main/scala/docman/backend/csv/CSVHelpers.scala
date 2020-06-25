@@ -1,17 +1,18 @@
 package docman.backend.csv
 
-import java.io.{File, FileOutputStream}
+import java.io.{File, FileNotFoundException, FileOutputStream}
 import java.nio.file.{Files, Path}
 
 import cats.effect._
 import cats.instances.all._
 import cats.syntax.all._
+import com.typesafe.scalalogging.StrictLogging
 import docman.core.Document
 import io.circe.generic.auto._
 import io.circe.parser._
 import io.circe.syntax._
 
-object CSVHelpers {
+object CSVHelpers extends StrictLogging{
   /** Read in a CSV file. If there are multiple entries for a document, the last one counts.
     *
     * @param db A CSV file that contains one doc per line.
@@ -49,7 +50,17 @@ object CSVHelpers {
     */
   def write[F[_]: Sync](db: File, docFile: Path, data: Document):F[Unit] =
         Resource
-          .fromAutoCloseable(Sync[F].delay(new FileOutputStream(db, true)))
+          .fromAutoCloseable(
+            Sync[F].delay(new FileOutputStream(db, true))
+              .recoverWith{case e: FileNotFoundException => Sync[F].delay{
+                if(db.getParentFile.mkdirs())
+                  {
+                    logger.info(s"creating directory ${db.getParentFile}")
+                    new FileOutputStream(db, true)
+                  }
+                else
+                  throw e
+              }})
           .use(fout => Sync[F].delay(fout.write((makeLine(docFile.toString, data) + "\n").getBytes("UTF8"))))
 
   def parseLine(line: String): Either[String,(String,Document)] = decode[(String,Document)](line).left.map(_.getMessage)

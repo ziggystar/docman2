@@ -13,7 +13,7 @@ import docman.core.{Document, DocumentStore}
 
 import scala.jdk.CollectionConverters._
 
-case class CSVStore[F[_]: Sync](root: Path, dbFile: File) extends DocumentStore[F] with StrictLogging {
+case class CSVStore[F[_]: Sync](root: Path, dbFile: File, createDbIfNotExists: Boolean) extends DocumentStore[F] with StrictLogging {
   override type Content = File
   /** Id is a full or relative path to a pdf file. It must be below one of the root directories. */
   type Id = Path
@@ -39,7 +39,7 @@ case class CSVStore[F[_]: Sync](root: Path, dbFile: File) extends DocumentStore[
   override def reloadDB: F[Unit] =
     for {
       _ <- Sync[F].delay(logger.info(s"load database from file $dbFile"))
-      entries <- CSVHelpers.readFile(dbFile, createIfNotExists = false)
+      entries <- CSVHelpers.readFile(dbFile, createIfNotExists = createDbIfNotExists).recover(_ => Nil)
       _ <- Sync[F].delay {
         database = entries.toMap
       }
@@ -65,7 +65,7 @@ case class CSVStore[F[_]: Sync](root: Path, dbFile: File) extends DocumentStore[
 }
 
 object CSVStore {
-  def asResource[F[_]: Sync](root: Path, dbFile: File): Resource[F,CSVStore[F]] =
-    Resource.liftF(Sync[F].delay{CSVStore(root, dbFile)})
+  def asResource[F[_]: Sync](root: Path, dbFile: File, createDbIfNotExists: Boolean = false): Resource[F,CSVStore[F]] =
+    Resource.liftF(Sync[F].delay{CSVStore(root, dbFile, createDbIfNotExists)})
 }
 
