@@ -100,7 +100,7 @@ object Main extends CommandIOApp(
           //for faster pdf rendering
           System.setProperty("sun.java2d.cmm", "sun.java2d.cmm.kcms.KcmsServiceProvider")
           frame.getContentPane.add(r)
-          frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
+          frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
           frame.setVisible(true)
           frame.addWindowListener(new WindowListener {
             override def windowOpened(e: WindowEvent): Unit = ()
