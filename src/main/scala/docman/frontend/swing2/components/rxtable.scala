@@ -4,9 +4,9 @@ import java.awt.Component
 
 import cats.effect.{Resource, Sync}
 import com.typesafe.scalalogging.StrictLogging
-import javax.swing.{JScrollPane, JTable, ListSelectionModel}
 import javax.swing.event.ListSelectionEvent
 import javax.swing.table.{AbstractTableModel, TableColumn}
+import javax.swing.{JScrollPane, JTable, ListSelectionModel}
 import monix.eval.Task
 import monix.execution.Cancelable
 import monix.execution.Scheduler.Implicits.global
@@ -25,7 +25,25 @@ object rxtable extends StrictLogging {
   }
 
   class MyTableModel[Id,R](columns: IndexedSeq[Column[R]]) extends AbstractTableModel {
-    val data: ArrayBuffer[(Id, R)] = ArrayBuffer.empty
+    private val data: ArrayBuffer[(Id, R)] = ArrayBuffer.empty
+    def getRow(i: Int): (Id,R) = data(i)
+    def setRow(r: (Id, R)): Unit = {
+      data.view.zipWithIndex.find(_._1._1 == r._1) match {
+        case None =>
+          data.addOne(r)
+          fireTableRowsInserted(data.length, data.length)
+        case Some((_,i)) =>
+          data.update(i, r)
+          fireTableRowsUpdated(i,i)
+      }
+    }
+    def removeRow(rid: Id): Unit = {
+      data.view.zipWithIndex.find(_._1._1 == rid).foreach{x =>
+        data.remove(x._2)
+        fireTableRowsDeleted(x._2, x._2)
+      }
+    }
+
     override def getRowCount: Int = data.size
     override def getColumnCount: Int = columns.size
     override def getValueAt(rowIndex: Int, columnIndex: Int): AnyRef = columns(columnIndex).getValue(data(rowIndex)._2)
@@ -40,8 +58,8 @@ object rxtable extends StrictLogging {
       tm <- Resource.pure(new MyTableModel[Id,R](columns))
       _ <- Resource.make[F,Cancelable](Sync[F].delay(rows.doOnNext(r => Task{
         r match {
-          case (id, Some(r)) => tm.data.append((id,r))
-          case (id, None) => tm.data.filterNot(_._1 == id)
+          case (id, Some(r)) => tm.setRow((id,r))
+          case (id, None) => tm.removeRow(id)
         }
       }).subscribe()))(c => Sync[F].delay(c.cancel()))
     } yield tm
@@ -53,14 +71,14 @@ object rxtable extends StrictLogging {
     * @param rows The rows to display.
     * @param selection The currently selected rows.
     * @param updates Editor updates on rows.
-    * @tparam Id Row identifier type.
+    * @tparam RId Row identifier type.
     * @tparam R Row data type
     * @return Swing table.
     */
-  def apply[F[_]: Sync, Id,R]( columns: IndexedSeq[Column[R]],
-                               rows: Observable[(Id,Option[R])],
-                               selection: Observer[Id] = Observer.empty,
-                               updates: Observer[(Id,Option[R])] = Observer.empty
+  def apply[F[_]: Sync, RId,R](columns: IndexedSeq[Column[R]],
+                               rows: Observable[(RId,Option[R])],
+                               selection: Observer[RId] = Observer.empty,
+                               updates: Observer[(RId,Option[R])] = Observer.empty
                              ): Resource[F,Component] = for {
     tm <- rxtablemodel(columns, rows, updates)
     table = {
@@ -69,7 +87,7 @@ object rxtable extends StrictLogging {
       t.setAutoCreateRowSorter(true)
       t.getSelectionModel.addListSelectionListener((e: ListSelectionEvent) => {
         if (!e.getValueIsAdjusting)
-          selection.onNext(tm.data(t.getSelectedRow)._1)
+          selection.onNext(tm.getRow(t.getSelectedRow)._1)
       })
       t
     }
