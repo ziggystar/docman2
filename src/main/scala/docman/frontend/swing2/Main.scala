@@ -61,12 +61,12 @@ object Main extends CommandIOApp(
 
         table <- components.rxtable[IO,Path,Document](
           columns = IndexedSeq(
-            rxtable.Column("Absender", _.sender.orNull, prefWidth = 100.some, isEditable = true),
-            rxtable.Column("Betreff", _.subject.orNull, prefWidth = 300.some, isEditable = true),
-            rxtable.Column("Datum", _.date.orNull, prefWidth = 100.some, isEditable = true),
-            rxtable.Column("Tags", _.tags, isEditable = true),
-            rxtable.Column("Seit", _.created),
-            rxtable.Column("Geändert", _.lastModified)
+            rxtable.Column[Document,String]("Absender", _.sender.orEmpty, ((s: String) => (_: Document).copy(sender = s.some)).some, prefWidth = 100.some),
+            rxtable.Column[Document,String]("Betreff", _.subject.orEmpty, prefWidth = 300.some),
+            rxtable.Column[Document,String]("Datum", _.date.map(_.toString).orEmpty, prefWidth = 100.some),
+            rxtable.Column[Document,String]("Tags", _.tags.toString),
+            rxtable.Column[Document,String]("Seit", _.created.toString),
+            rxtable.Column[Document,String]("Geändert", _.lastModified.toString)
           ),
           rows =
             Observable(
