@@ -40,7 +40,7 @@ case class SideCarRO(roots: Seq[(File,Boolean)]) extends RODocumentStore[EitherT
   override def getAllDocuments: F[Seq[(File,Document)]] = EitherT.rightT(docs.toSeq)
   override def access(id: File): EitherT[IO, String, File] = EitherT.right(IO(id))
   override def reloadDB: EitherT[IO, String, Unit] = EitherT.liftF(loadSideCarFiles.map(m => {docs = m}))
-  override def scanForPDFs: EitherT[IO, String, Unit] = notSupported
+  override def scanForPDFs: EitherT[IO, String, Seq[File]] = notSupported
 }
 
 object SideCarHelpers {

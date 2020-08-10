@@ -14,7 +14,7 @@ case class DSMapDocument[F[_]: Functor, C, I](ds: DocumentStore[F]{type Id = I; 
 
   override def reloadDB: F[Unit] = ds.reloadDB
 
-  override def scanForPDFs: F[Unit] = ds.scanForPDFs
+  override def scanForPDFs: F[Seq[I]] = ds.scanForPDFs
 
   override def access(id: Id): F[Content] = ds.access(id)
 }
