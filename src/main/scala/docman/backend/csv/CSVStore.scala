@@ -8,12 +8,13 @@ import java.time.LocalDateTime
 import cats.effect.{Resource, Sync}
 import cats.instances.all._
 import cats.syntax.all._
-import com.typesafe.scalalogging.StrictLogging
 import docman.core.{Document, DocumentStore}
 
 import scala.jdk.CollectionConverters._
 
-case class CSVStore[F[_]: Sync](root: Path, dbFile: File, createDbIfNotExists: Boolean) extends DocumentStore[F] with StrictLogging {
+import docman.utils.Logging
+
+case class CSVStore[F[_]: Sync](root: Path, dbFile: File, createDbIfNotExists: Boolean) extends DocumentStore[F] with Logging {
   override type Content = File
   /** Id is a full or relative path to a pdf file. It must be below one of the root directories. */
   type Id = Path

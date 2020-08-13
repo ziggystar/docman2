@@ -4,7 +4,6 @@ import java.awt.Component
 import java.awt.event.{ActionEvent, ActionListener}
 
 import cats.effect._
-import com.typesafe.scalalogging.StrictLogging
 import javax.swing.{JButton, JLabel}
 import jiconfont.icons.font_awesome.FontAwesome
 import jiconfont.swing.IconFontSwing
@@ -13,7 +12,9 @@ import monix.execution.Ack
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.{Observable, Observer}
 
-package object components extends StrictLogging {
+import docman.utils.Logging
+
+package object components extends Logging {
 
   IconFontSwing.register(FontAwesome.getIconFont)
 

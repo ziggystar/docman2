@@ -1,6 +1,5 @@
 package docman.frontend.swing2
 
-
 import java.awt.Component
 import java.awt.event.{WindowEvent, WindowListener}
 import java.nio.file.{Files, Path, Paths}
@@ -53,7 +52,7 @@ object Main extends CommandIOApp(
 
         updates <- Resource.make(IO{
           val rs = ReplaySubject[(Path,Document)]()
-          val s = rs.subscribe(u => store.updateDocument(u._1, u._2).map(_ => Ack.Continue).unsafeToFuture)
+          val s = rs.subscribe(u => store.updateDocument(u._1, u._2).map(_ => Ack.Continue).unsafeToFuture())
           (rs: Observable[(Path,Document)],s)
         })(rss => IO(rss._2.cancel())).map(_._1)
 

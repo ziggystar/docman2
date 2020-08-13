@@ -46,7 +46,7 @@ case object pdfview extends StrictLogging {
 
         override protected def paintComponent(g: Graphics): Unit = {
           g.clearRect(g.getClipBounds.x, g.getClipBounds.y, g.getClipBounds.width, g.getClipBounds.height)
-          currentPage.get.foreach { img =>
+          currentPage.get().foreach { img =>
             val (imgW, imgH) = (img.getWidth(this), img.getHeight(this))
             logger.debug(s"drawing pdf on screen ($imgW x $imgH)")
             val (cW, cH) = (this.getWidth, this.getHeight)

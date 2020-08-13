@@ -6,13 +6,14 @@ import java.nio.file.{Files, Path}
 import cats.effect._
 import cats.instances.all._
 import cats.syntax.all._
-import com.typesafe.scalalogging.StrictLogging
 import docman.core.Document
 import io.circe.generic.auto._
 import io.circe.parser._
 import io.circe.syntax._
 
-object CSVHelpers extends StrictLogging{
+import docman.utils.Logging
+
+object CSVHelpers extends Logging {
   /** Read in a CSV file. If there are multiple entries for a document, the last one counts.
     *
     * @param db A CSV file that contains one doc per line.
