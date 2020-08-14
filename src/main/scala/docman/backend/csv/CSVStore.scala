@@ -54,9 +54,8 @@ case class CSVStore[F[_]: Sync](root: Path, dbFile: File, createDbIfNotExists: B
             10,
             (p: Path, bfa: BasicFileAttributes) => bfa.isRegularFile && p.toString.toLowerCase.endsWith(".pdf"))
             .iterator().asScala.toIndexedSeq
-            .filterNot(database.contains)
         )
-    newPDFsNormalized = newPDFs.map(normalizeFoundPath)
+    newPDFsNormalized = newPDFs.map(normalizeFoundPath).filterNot(database.contains)
     _ <- newPDFsNormalized.map(f => updateDocument(f, Document())).toList.sequence
   } yield newPDFsNormalized
 

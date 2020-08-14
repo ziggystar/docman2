@@ -107,6 +107,10 @@ object Main extends CommandIOApp(
       for{
         (r,fin) <- body.allocated
         frame = new JFrame("docman2")
+        _ = {
+          System.setProperty("awt.useSystemAAFontSettings", "on")
+          System.setProperty("swing.aatext", "true")
+        }
         _ <- IO {
           //for faster pdf rendering
           System.setProperty("sun.java2d.cmm", "sun.java2d.cmm.kcms.KcmsServiceProvider")
