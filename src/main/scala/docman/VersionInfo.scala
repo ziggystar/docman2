@@ -1,10 +1,9 @@
 package docman
 
-import com.typesafe.scalalogging.LazyLogging
-
+import docman.utils.Logging
 
 /** Load version string from `docman/version.properties`. */
-case object VersionInfo extends LazyLogging {
+case object VersionInfo extends Logging {
   val version: String = BuildInfo.version
   val isDefVersion: Boolean = version.contains("-")
 }

@@ -8,10 +8,10 @@ import cats.effect._
 import cats.implicits._
 import com.monovore.decline._
 import com.monovore.decline.effect._
-import com.typesafe.scalalogging.StrictLogging
 import docman.backend.csv.CSVStore
 import docman.core.Document
 import docman.frontend.swing2.components._
+import docman.utils.Logging
 import javax.swing._
 import monix.execution.Ack
 import monix.reactive.subjects.{PublishSubject, ReplaySubject}
@@ -22,7 +22,7 @@ object Main extends CommandIOApp(
   name = "docman2-gui",
   header = "GUI for docman2",
   version = "0.0.x"
-) with StrictLogging {
+) with Logging {
   override def main: Opts[IO[ExitCode]] = {
     val dbfile = Opts.option[Path]("dbfile", "data base file")
       .withDefault(Paths.get(System.getProperty("user.home", "")).resolve(".docman2/db.0.csv"))

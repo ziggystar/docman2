@@ -14,6 +14,11 @@ name := "docman2"
 version := "3.0.0-DEV"
 
 scalaVersion := "2.13.3"
+//scalaVersion := "0.25.0-RC2"
+
+//scalacOptions ++= {
+//  if (isDotty.value) Seq("-source:3.0-migration") else Nil
+//}
 
 licenses += "GPLv3" -> url("https://www.gnu.org/licenses/gpl-3.0.html")
 
@@ -24,6 +29,7 @@ startYear := Some(2013)
 description := "Application for managing PDF files with meta data"
 
 addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full)
+addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
 
 resolvers += Resolver.sonatypeRepo("releases")
 
@@ -41,9 +47,6 @@ libraryDependencies ++= Seq(
 ).map(_ % circeVersion)
 
 libraryDependencies += "com.monovore" %% "decline-effect" % "1.2.0"
-
-//logging
-libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
 
 //java stuff below
 
@@ -73,17 +76,16 @@ lazy val root = (project in file(".")).
 
 mainClass in assembly := Some("docman.frontend.cli.CLI")
 
-addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
-
 scalacOptions ++= Seq(
   "-encoding", "utf8",
   "-feature",
   "-deprecation",
   "-unchecked",
   "-Xlint",
-  "-Xfatal-warnings",
+//  "-Xfatal-warnings",
   "-language:implicitConversions",
   "-language:higherKinds",
   "-language:existentials",
   "-language:postfixOps"
 )
+//libraryDependencies := libraryDependencies.value.map(_.withDottyCompat(scalaVersion.value))

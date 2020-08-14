@@ -6,7 +6,7 @@ import java.io.File
 
 import cats.effect._
 import cats.implicits._
-import com.typesafe.scalalogging.StrictLogging
+import docman.utils.Logging
 import javax.swing.{JPanel, JToolBar}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -19,7 +19,7 @@ import org.apache.pdfbox.rendering.{ImageType, PDFRenderer}
 //better refactor the code
 import scala.language.reflectiveCalls
 
-case object pdfview extends StrictLogging {
+case object pdfview extends Logging {
   def loadPDF(pdfFile: Observable[Option[File]]): Observable[Option[PDDocument]] =
     pdfFile.flatMap(of => Observable.resource(Task{
       logger.info(s"loading pdf from $of")

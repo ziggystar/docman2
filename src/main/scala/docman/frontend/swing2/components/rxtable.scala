@@ -3,7 +3,7 @@ package docman.frontend.swing2.components
 import java.awt.Component
 
 import cats.effect.{Resource, Sync}
-import com.typesafe.scalalogging.StrictLogging
+import docman.utils.Logging
 import javax.swing.event.ListSelectionEvent
 import javax.swing.table.{AbstractTableModel, TableColumn}
 import javax.swing.{JScrollPane, JTable, ListSelectionModel}
@@ -14,7 +14,7 @@ import monix.reactive._
 
 import scala.collection.mutable.ArrayBuffer
 
-object rxtable extends StrictLogging {
+object rxtable extends Logging {
 
   case class Column[R,T <: AnyRef](name: String,
                        getValue: R => T,
