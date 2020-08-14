@@ -3,7 +3,7 @@ package docman.backend.csv
 import java.io.File
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
-import java.time.LocalDateTime
+import java.time.{LocalDateTime, ZoneId}
 
 import cats.effect.{Resource, Sync}
 import cats.instances.all._
@@ -11,7 +11,6 @@ import cats.syntax.all._
 import docman.core.{Document, DocumentStore}
 
 import scala.jdk.CollectionConverters._
-
 import docman.utils.Logging
 
 case class CSVStore[F[_]: Sync](root: Path, dbFile: File, createDbIfNotExists: Boolean) extends DocumentStore[F] with Logging {
@@ -55,9 +54,10 @@ case class CSVStore[F[_]: Sync](root: Path, dbFile: File, createDbIfNotExists: B
             (p: Path, bfa: BasicFileAttributes) => bfa.isRegularFile && p.toString.toLowerCase.endsWith(".pdf"))
             .iterator().asScala.toIndexedSeq
         )
-    newPDFsNormalized = newPDFs.map(normalizeFoundPath).filterNot(database.contains)
-    _ <- newPDFsNormalized.map(f => updateDocument(f, Document())).toList.sequence
-  } yield newPDFsNormalized
+    withDate = newPDFs.map(f => (f,LocalDateTime.ofInstant(Files.getLastModifiedTime(f).toInstant, ZoneId.systemDefault())))
+    newPDFsNormalized = withDate.map(_.leftMap(normalizeFoundPath)).filterNot(x => database.contains(x._1))
+    _ <- newPDFsNormalized.map(f => updateDocument(f._1, Document(created = f._2))).toList.sequence
+  } yield newPDFsNormalized.map(_._1)
 
   override def getAllDocuments: F[Seq[(Id, Doc)]] = Sync[F].delay(database.toSeq)
 

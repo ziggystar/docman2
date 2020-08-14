@@ -3,6 +3,10 @@ package docman.frontend.swing2
 import java.awt.Component
 import java.awt.event.{WindowEvent, WindowListener}
 import java.nio.file.{Files, Path, Paths}
+import java.text.SimpleDateFormat
+import java.time.{LocalDate, LocalDateTime}
+import java.time.format.{DateTimeFormatter, FormatStyle}
+import java.util.Locale
 
 import cats.effect._
 import cats.implicits._
@@ -18,6 +22,8 @@ import monix.reactive.subjects.{PublishSubject, ReplaySubject}
 import monix.reactive.{Observable, _}
 import net.miginfocom.swing.MigLayout
 
+import scala.util.Try
+
 object Main extends CommandIOApp(
   name = "docman2-gui",
   header = "GUI for docman2",
@@ -32,7 +38,11 @@ object Main extends CommandIOApp(
     dbOpt.map{db =>
       import monix.execution.Scheduler.Implicits.global
 
-//      implicit val reporter: UncaughtExceptionReporter = monix.execution.UncaughtExceptionReporter.default
+
+      val dateFormat = DateTimeFormatter.ISO_LOCAL_DATE.withLocale(Locale.GERMAN)
+      logger.info(dateFormat.toString)
+
+      //      implicit val reporter: UncaughtExceptionReporter = monix.execution.UncaughtExceptionReporter.default
       val body: Resource[IO, Component] = for {
         store: CSVStore[IO] <- db
 
@@ -72,10 +82,20 @@ object Main extends CommandIOApp(
           columns = IndexedSeq(
             rxtable.Column[Document,String]("Absender", _.sender.orEmpty, ((s: String) => (_: Document).copy(sender = s.some)).some, prefWidth = 100.some),
             rxtable.Column[Document,String]("Betreff", _.subject.orEmpty, ((s: String) => (_: Document).copy(subject = s.some)).some, prefWidth = 300.some),
-            rxtable.Column[Document,String]("Datum", _.date.map(_.toString).orEmpty, prefWidth = 100.some),
-            rxtable.Column[Document,String]("Tags", _.tags.toString),
-            rxtable.Column[Document,String]("Seit", _.created.toString),
-            rxtable.Column[Document,String]("Geändert", _.lastModified.toString)
+            rxtable.Column[Document,String]("Datum",
+              _.date.map(dateFormat.format).orEmpty,
+              ((s: String) =>
+                Try(dateFormat.parse(s)).toOption
+                  .map(parsed => (_: Document).copy(date = LocalDate.from(parsed).some))
+                  .getOrElse(identity[Document] _)
+                ).some,
+              prefWidth = 100.some),
+            rxtable.Column[Document,String]("Tags",
+              _.tags.toSeq.sorted.mkString(" "),
+              ((s: String) => (_: Document).copy(tags = s.split(" ").toSet)).some
+            ),
+            rxtable.Column[Document,String]("Seit", d => dateFormat.format(d.created)),
+            rxtable.Column[Document,String]("Geändert", d => dateFormat.format(d.lastModified))
           ),
           rows = rows,
           selection = selection,
