@@ -22,6 +22,7 @@ import monix.reactive.subjects.{PublishSubject, ReplaySubject}
 import monix.reactive.{Observable, _}
 import net.miginfocom.swing.MigLayout
 
+import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
 
 object Main extends CommandIOApp(
@@ -59,6 +60,9 @@ object Main extends CommandIOApp(
         })(sc => IO{sc._3.cancel()}).map(x => (x._1,x._2))
 
         button <- rxbutton[IO](label = Observable("Scan"), scanTrigger)
+
+        searchRx <- PublishSubject[String]().pure[Resource[IO,*]]
+        search <- rxtextfield[IO](searchRx)
 
         updates <- Resource.make(IO{
           val rs = ReplaySubject[(Path,Option[Document])]()
@@ -99,7 +103,8 @@ object Main extends CommandIOApp(
           ),
           rows = rows,
           selection = selection,
-          updates = updates
+          updates = updates,
+          regex = searchRx.throttleLast(FiniteDuration(1,"s"))
         )
 
         pdfview <- pdfview[IO](selection.mapEvalF(store.access).map(Option(_)))
@@ -113,7 +118,7 @@ object Main extends CommandIOApp(
           tb.add(button)
           tb.addSeparator()
           tb.add(new JLabel("Suche"))
-          tb.add(new JTextField(20))
+          tb.add(search)
           p.add(tb, "grow,wrap")
           val left = new JPanel(new MigLayout)
           left.add(table, "push, grow, wrap")

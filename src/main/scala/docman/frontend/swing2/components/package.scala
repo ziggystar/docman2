@@ -1,18 +1,18 @@
 package docman.frontend.swing2
 
 import java.awt.Component
-import java.awt.event.{ActionEvent, ActionListener}
+import java.awt.event.{ActionEvent, ActionListener, KeyEvent, KeyListener}
 
 import cats.effect._
-import javax.swing.{JButton, JLabel}
+import javax.swing.{JButton, JLabel, JTextField}
 import jiconfont.icons.font_awesome.FontAwesome
 import jiconfont.swing.IconFontSwing
 import monix.eval.Task
 import monix.execution.Ack
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.{Observable, Observer}
-
 import docman.utils.Logging
+import javax.swing.event.{DocumentEvent, DocumentListener}
 
 package object components extends Logging {
 
@@ -29,7 +29,27 @@ package object components extends Logging {
     x._2.cancel()
   }).map(_._1)
 
-  def rxtextfield[F[_] : Effect](content: Observer[String]): Resource[F, Component] = ???
+  def rxtextfield[F[_] : Effect](content: Observer[String]): Resource[F, Component] = Resource.make(
+    Sync[F].delay {
+      val tf = new JTextField("")
+      //ignore Future[Ack]
+      val listener = new DocumentListener {
+        def stupidJava(e: DocumentEvent): Unit = { content.onNext(tf.getText) }
+        override def insertUpdate(e: DocumentEvent): Unit = stupidJava(e)
+        override def removeUpdate(e: DocumentEvent): Unit = stupidJava(e)
+        override def changedUpdate(e: DocumentEvent): Unit = stupidJava(e)
+      }
+      logger.debug("adding listener to textfield")
+      tf.getDocument.addDocumentListener(listener)
+      (tf, listener)
+    }
+  )({
+    case (tf,l) =>
+      Sync[F].delay{
+        logger.debug("removing listener from text field")
+        tf.getDocument.removeDocumentListener(l)
+      }
+  }).map(_._1)
 
   def rxbutton[F[_] : Sync](label: Observable[String], clicks: Observer[Unit]): Resource[F, JButton] = Resource.make(
     Sync[F].delay {
