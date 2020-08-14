@@ -33,7 +33,7 @@ object Main extends CommandIOApp(
       import monix.execution.Scheduler.Implicits.global
 
 //      implicit val reporter: UncaughtExceptionReporter = monix.execution.UncaughtExceptionReporter.default
-      val body: Resource[IO, Component] = for{
+      val body: Resource[IO, Component] = for {
         store: CSVStore[IO] <- db
 
         _ <- Resource.liftF(store.reloadDB)
@@ -51,31 +51,35 @@ object Main extends CommandIOApp(
         button <- rxbutton[IO](label = Observable("Scan"), scanTrigger)
 
         updates <- Resource.make(IO{
-          val rs = ReplaySubject[(Path,Document)]()
-          val s = rs.subscribe(u => store.updateDocument(u._1, u._2).map(_ => Ack.Continue).unsafeToFuture())
-          (rs: Observable[(Path,Document)],s)
+          val rs = ReplaySubject[(Path,Option[Document])]()
+          val s = rs.collect{case (p,Some(d)) => (p,d)}.subscribe(u => store.updateDocument(u._1, u._2).map(_ => Ack.Continue).unsafeToFuture())
+          (rs: ReplaySubject[(Path,Option[Document])],s)
         })(rss => IO(rss._2.cancel())).map(_._1)
 
         selection <- PublishSubject[Path]().pure[Resource[IO,*]]
 
+        refreshTrigger: Observable[Unit] = Observable(
+          Observable.pure(()), //initial load
+          updates.map(_ => ()), //changes
+          scanTrigger           //scanTrigger
+        ).merge
+
+        rows = refreshTrigger.mapEvalF(_ => store.getAllDocuments)
+          .flatMap(Observable.fromIterable)
+          .map(_.map(_.some))
+
         table <- components.rxtable[IO,Path,Document](
           columns = IndexedSeq(
             rxtable.Column[Document,String]("Absender", _.sender.orEmpty, ((s: String) => (_: Document).copy(sender = s.some)).some, prefWidth = 100.some),
-            rxtable.Column[Document,String]("Betreff", _.subject.orEmpty, prefWidth = 300.some),
+            rxtable.Column[Document,String]("Betreff", _.subject.orEmpty, ((s: String) => (_: Document).copy(subject = s.some)).some, prefWidth = 300.some),
             rxtable.Column[Document,String]("Datum", _.date.map(_.toString).orEmpty, prefWidth = 100.some),
             rxtable.Column[Document,String]("Tags", _.tags.toString),
             rxtable.Column[Document,String]("Seit", _.created.toString),
             rxtable.Column[Document,String]("Geändert", _.lastModified.toString)
           ),
-          rows =
-            Observable(
-              (Observable(Observable.pure(()), updates.map(_ => ())).merge.mapEvalF(_ => store.getAllDocuments)),
-              scanUpdates)
-              .merge
-              .flatMap(Observable.fromIterable)
-              .map(_.map(_.some)),
+          rows = rows,
           selection = selection,
-          updates = Observer.dump("change")
+          updates = updates
         )
 
         pdfview <- pdfview[IO](selection.mapEvalF(store.access).map(Option(_)))

@@ -42,8 +42,10 @@ object rxtable extends Logging {
         case Some((content,i)) if content != r =>
           data.update(i, r)
           fireTableRowsUpdated(i,i)
+        case other =>
       }
     }
+
     def removeRow(rid: Id): Unit = {
       data.view.zipWithIndex.find(_._1._1 == rid).foreach{x =>
         data.remove(x._2)
