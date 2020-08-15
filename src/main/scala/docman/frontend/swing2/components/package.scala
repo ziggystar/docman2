@@ -1,18 +1,18 @@
 package docman.frontend.swing2
 
 import java.awt.Component
-import java.awt.event.{ActionEvent, ActionListener, KeyEvent, KeyListener}
+import java.awt.event.{ActionEvent, ActionListener}
 
 import cats.effect._
+import docman.utils.Logging
+import javax.swing.event.{DocumentEvent, DocumentListener}
 import javax.swing.{JButton, JLabel, JTextField}
 import jiconfont.icons.font_awesome.FontAwesome
 import jiconfont.swing.IconFontSwing
 import monix.eval.Task
-import monix.execution.Ack
 import monix.execution.Scheduler.Implicits.global
+import monix.execution.{Ack, Cancelable}
 import monix.reactive.{Observable, Observer}
-import docman.utils.Logging
-import javax.swing.event.{DocumentEvent, DocumentListener}
 
 package object components extends Logging {
 
@@ -51,7 +51,7 @@ package object components extends Logging {
       }
   }).map(_._1)
 
-  def rxbutton[F[_] : Sync](label: Observable[String], clicks: Observer[Unit]): Resource[F, JButton] = Resource.make(
+  def rxbutton[F[_] : Sync](label: Observable[String], clicks: Observer[Unit], enabled: Observable[Boolean] = Observable(true)): Resource[F, JButton] = Resource.make(
     Sync[F].delay {
       val button = new JButton("foo")
       val labelCancel = label.doOnNext(newLabel => Task(button.setText(newLabel))).subscribe()
@@ -65,7 +65,11 @@ package object components extends Logging {
         }
       }
       button.addActionListener(eventToUnit)
-      (button, labelCancel, eventToUnit)
+      val subsEnabled = enabled.doOnNext(b => Task {
+        logger.debug("open button going " + b)
+        button.setEnabled(b)
+      }).subscribe()
+      (button, Cancelable.collection(labelCancel, subsEnabled), eventToUnit)
     }
   )({
     case (b, c, e) => Sync[F].delay {

@@ -1,11 +1,10 @@
 package docman.frontend.swing2
 
-import java.awt.Component
 import java.awt.event.{WindowEvent, WindowListener}
+import java.awt.{Component, Desktop}
 import java.nio.file.{Files, Path, Paths}
-import java.text.SimpleDateFormat
-import java.time.{LocalDate, LocalDateTime}
-import java.time.format.{DateTimeFormatter, FormatStyle}
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 import cats.effect._
@@ -59,7 +58,7 @@ object Main extends CommandIOApp(
           (s, updts, updts.subscribe())
         })(sc => IO{sc._3.cancel()}).map(x => (x._1,x._2))
 
-        button <- rxbutton[IO](label = Observable("Scan"), scanTrigger)
+        scanButton <- rxbutton[IO](label = Observable("Scan"), scanTrigger)
 
         searchRx <- PublishSubject[String]().pure[Resource[IO,*]]
         search <- rxtextfield[IO](searchRx)
@@ -71,6 +70,24 @@ object Main extends CommandIOApp(
         })(rss => IO(rss._2.cancel())).map(_._1)
 
         selection <- PublishSubject[Path]().pure[Resource[IO,*]]
+
+        openButton <- for{
+          openObserver <- PublishSubject[Unit].pure[Resource[IO,*]]
+          button <- rxbutton[IO](
+            label = Observable("Open"),
+            openObserver,
+            enabled = if(!Desktop.getDesktop.isSupported(Desktop.Action.OPEN)) Observable(false) else Observable(false) ++ selection.map(_ => true)
+          )
+          _ <- Resource.make(IO{
+            selection.sampleRepeatedBy(openObserver).doOnNextF(p => for {
+              file <- store.access(p)
+              _ <- IO {
+                Desktop.getDesktop.open(file)
+              }
+            } yield ()
+            ).subscribe()
+          })(c => IO(c.cancel()))
+        } yield button
 
         refreshTrigger: Observable[Unit] = Observable(
           Observable.pure(()), //initial load
@@ -84,7 +101,7 @@ object Main extends CommandIOApp(
 
         table <- components.rxtable[IO,Path,Document](
           columns = IndexedSeq(
-            rxtable.Column[Document,String]("Absender", _.sender.orEmpty, ((s: String) => (_: Document).copy(sender = s.some)).some, prefWidth = 100.some),
+            rxtable.Column[Document,String]("Absender", _.sender.orEmpty, ((s: String) => (_: Document).copy(sender = s.some)).some, prefWidth = 200.some),
             rxtable.Column[Document,String]("Betreff", _.subject.orEmpty, ((s: String) => (_: Document).copy(subject = s.some)).some, prefWidth = 300.some),
             rxtable.Column[Document,String]("Datum",
               _.date.map(dateFormat.format).orEmpty,
@@ -93,13 +110,13 @@ object Main extends CommandIOApp(
                   .map(parsed => (_: Document).copy(date = LocalDate.from(parsed).some))
                   .getOrElse(identity[Document] _)
                 ).some,
-              prefWidth = 100.some),
+              fixedWidth = 90.some),
             rxtable.Column[Document,String]("Tags",
               _.tags.toSeq.sorted.mkString(" "),
               ((s: String) => (_: Document).copy(tags = s.split(" ").toSet)).some
             ),
-            rxtable.Column[Document,String]("Seit", d => dateFormat.format(d.created)),
-            rxtable.Column[Document,String]("Geändert", d => dateFormat.format(d.lastModified))
+            rxtable.Column[Document,String]("Seit", d => dateFormat.format(d.created), fixedWidth = 90.some),
+            rxtable.Column[Document,String]("Geändert", d => dateFormat.format(d.lastModified), fixedWidth = 90.some)
           ),
           rows = rows,
           selection = selection,
@@ -115,7 +132,8 @@ object Main extends CommandIOApp(
           val p = new JPanel(new MigLayout())
           val tb  = new JToolBar()
           tb.setFloatable(false)
-          tb.add(button)
+          tb.add(scanButton)
+          tb.add(openButton)
           tb.addSeparator()
           tb.add(new JLabel("Suche"))
           tb.add(search)

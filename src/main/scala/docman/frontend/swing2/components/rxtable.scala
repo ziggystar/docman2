@@ -5,7 +5,7 @@ import java.awt.Component
 import cats.effect.{Resource, Sync}
 import docman.utils.Logging
 import javax.swing.event.ListSelectionEvent
-import javax.swing.table.{AbstractTableModel, TableColumn, TableRowSorter}
+import javax.swing.table.{AbstractTableModel, TableRowSorter}
 import javax.swing.{JScrollPane, JTable, ListSelectionModel, RowFilter}
 import monix.eval.Task
 import monix.execution.Cancelable
@@ -13,21 +13,15 @@ import monix.execution.Scheduler.Implicits.global
 import monix.reactive._
 
 import scala.collection.mutable.ArrayBuffer
-import scala.util.matching.Regex
 
 object rxtable extends Logging {
 
   case class Column[R, T <: AnyRef](name: String,
                                     getValue: R => T,
                                     setValue: Option[T => R => R] = None,
-                                    prefWidth: Option[Int] = None) {
-    def tableColumn(i: Int): TableColumn = {
-      val c = new TableColumn(i)
-      c.setHeaderValue(name)
-      prefWidth.foreach(c.setPreferredWidth)
-      c
-    }
-
+                                    prefWidth: Option[Int] = None,
+                                    fixedWidth: Option[Int] = None
+                                   ) {
     def cast(a: AnyRef): T = a.asInstanceOf[T]
 
     def set: Option[AnyRef => R => R] = setValue.map(s => (a: AnyRef) => s(a.asInstanceOf[T]))
@@ -35,7 +29,7 @@ object rxtable extends Logging {
     def get(r: R): AnyRef = getValue(r)
   }
 
-  class MyTableModel[Id, R](columns: IndexedSeq[Column[R, _]], observer: Observer[(Id, Option[R])]) extends AbstractTableModel {
+  class MyTableModel[Id, R](val columns: IndexedSeq[Column[R, _]], val observer: Observer[(Id, Option[R])]) extends AbstractTableModel {
     private val data: ArrayBuffer[(Id, R)] = ArrayBuffer.empty
 
     def getRow(i: Int): (Id, R) = data(i)
@@ -120,6 +114,7 @@ object rxtable extends Logging {
     }))(rf => Sync[F].delay(rf.subscription.cancel()))
     table = {
       val t = new JTable(tm)
+      t.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS)
       t.setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
       val sorter = new TableRowSorter(tm)
       sorter.setRowFilter(filter)
@@ -128,6 +123,14 @@ object rxtable extends Logging {
         if (!e.getValueIsAdjusting)
           selection.onNext(tm.getRow(t.getSelectedRow)._1)
       })
+      (0 until t.getColumnModel.getColumnCount).foreach { i =>
+        val c = t.getColumnModel.getColumn(i)
+        tm.columns(i).prefWidth.foreach(c.setPreferredWidth)
+        tm.columns(i).fixedWidth.foreach { w =>
+          c.setMinWidth(w)
+          c.setMaxWidth(w)
+        }
+      }
       t
     }
   } yield new JScrollPane(table)
