@@ -2,7 +2,7 @@ package docman.backend.csv
 
 import java.io.File
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{Files, Path}
+import java.nio.file.{FileVisitOption, Files, Path}
 import java.time.{LocalDateTime, ZoneId}
 
 import cats.effect.{Resource, Sync}
@@ -60,7 +60,9 @@ case class AppendFileStore[F[_]: Sync,T : Storable](root: Path, dbFile: File, cr
           Files.find(
             root,
             10,
-            (p: Path, bfa: BasicFileAttributes) => bfa.isRegularFile && p.toString.toLowerCase.endsWith(".pdf"))
+            (p: Path, bfa: BasicFileAttributes) => bfa.isRegularFile && p.toString.toLowerCase.endsWith(".pdf"),
+            FileVisitOption.FOLLOW_LINKS
+          )
             .iterator().asScala.toIndexedSeq
         )
     withDate = newPDFs.map(f => (f,LocalDateTime.ofInstant(Files.getLastModifiedTime(f).toInstant, ZoneId.systemDefault())))
