@@ -8,28 +8,37 @@ import java.time.{LocalDateTime, ZoneId}
 import cats.effect.{Resource, Sync}
 import cats.instances.all._
 import cats.syntax.all._
-import docman.core.{Document, DocumentStore}
+import docman.core.DocumentStore
+import docman.utils.Logging
+import io.circe.Codec
 
 import scala.jdk.CollectionConverters._
-import docman.utils.Logging
 
-case class CSVStore[F[_]: Sync](root: Path, dbFile: File, createDbIfNotExists: Boolean) extends DocumentStore[F] with Logging {
+case class Storable[T](codec: Codec[T], create: LocalDateTime => T, modify: LocalDateTime => T => T)
+object Storable {
+  def apply[T : Storable] = implicitly[Storable[T]]
+}
+
+case class AppendFileStore[F[_]: Sync,T : Storable](root: Path, dbFile: File, createDbIfNotExists: Boolean) extends DocumentStore[F] with Logging {
   override type Content = File
   /** Id is a full or relative path to a pdf file. It must be below one of the root directories. */
   type Id = Path
+  type Doc = T
 
-  var database: Map[Path, Document] = Map()
+  implicit def codec: Codec[T] = Storable[T].codec
+
+  var database: Map[Path, T] = Map()
 
   logger.info(s"root: ${root.toRealPath()}")
 
   def normalizeFoundPath(p: Path): Path = root.toRealPath().relativize(p.toRealPath())
 
-  override def updateDocument(id: Id, d: Doc): F[Doc] =
+  override def updateDocument(id: Id, d: T): F[T] =
     for {
       _ <- Sync[F].delay {
         logger.debug(s"update data for $id to $d")
       }
-      dUpdate = d.copy(lastModified = LocalDateTime.now())
+      dUpdate = Storable[T].modify(LocalDateTime.now())(d)
       _ <- CSVHelpers.write(dbFile, id, dUpdate)
       _ <- Sync[F].delay {
         database = database + (id -> dUpdate)
@@ -56,16 +65,16 @@ case class CSVStore[F[_]: Sync](root: Path, dbFile: File, createDbIfNotExists: B
         )
     withDate = newPDFs.map(f => (f,LocalDateTime.ofInstant(Files.getLastModifiedTime(f).toInstant, ZoneId.systemDefault())))
     newPDFsNormalized = withDate.map(_.leftMap(normalizeFoundPath)).filterNot(x => database.contains(x._1))
-    _ <- newPDFsNormalized.map(f => updateDocument(f._1, Document(created = f._2))).toList.sequence
+    _ <- newPDFsNormalized.map(f => updateDocument(f._1, Storable[T].create(f._2))).toList.sequence
   } yield newPDFsNormalized.map(_._1)
 
-  override def getAllDocuments: F[Seq[(Id, Doc)]] = Sync[F].delay(database.toSeq)
+  override def getAllDocuments: F[Seq[(Id, T)]] = Sync[F].delay(database.toSeq)
 
   override def access(id: Id): F[Content] = Sync[F].pure(root.resolve(id).toRealPath().toFile)
 }
 
-object CSVStore {
-  def asResource[F[_]: Sync](root: Path, dbFile: File, createDbIfNotExists: Boolean = false): Resource[F,CSVStore[F]] =
-    Resource.liftF(Sync[F].delay{CSVStore(root, dbFile, createDbIfNotExists)})
+object AppendFileStore {
+  def asResource[F[_]: Sync, T : Storable](root: Path, dbFile: File, createDbIfNotExists: Boolean = false): Resource[F,AppendFileStore[F,T]] =
+    Resource.liftF(Sync[F].delay{AppendFileStore(root, dbFile, createDbIfNotExists)})
 }
 

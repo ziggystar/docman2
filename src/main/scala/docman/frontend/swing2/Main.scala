@@ -11,7 +11,7 @@ import cats.effect._
 import cats.implicits._
 import com.monovore.decline._
 import com.monovore.decline.effect._
-import docman.backend.csv.CSVStore
+import docman.backend.csv.AppendFileStore
 import docman.core.Document
 import docman.frontend.swing2.components._
 import docman.utils.Logging
@@ -33,7 +33,7 @@ object Main extends CommandIOApp(
     val dbfile = Opts.option[Path]("dbfile", "data base file")
       .withDefault(Paths.get(System.getProperty("user.home", "")).resolve(".docman2/db.0.csv"))
     val root = Opts.argument[Path]("root").validate("document root must be directory")(Files.isDirectory(_))
-    val dbOpt = (root,dbfile map (_.toFile)).mapN(CSVStore.asResource[IO](_,_))
+    val dbOpt = (root,dbfile map (_.toFile)).mapN(AppendFileStore.asResource[IO, Document](_,_))
 
     dbOpt.map{db =>
       import monix.execution.Scheduler.Implicits.global
@@ -44,7 +44,7 @@ object Main extends CommandIOApp(
 
       //      implicit val reporter: UncaughtExceptionReporter = monix.execution.UncaughtExceptionReporter.default
       val body: Resource[IO, Component] = for {
-        store: CSVStore[IO] <- db
+        store: AppendFileStore[IO,Document] <- db
 
         _ <- Resource.liftF(store.reloadDB)
 
@@ -72,7 +72,7 @@ object Main extends CommandIOApp(
         selection <- PublishSubject[Path]().pure[Resource[IO,*]]
 
         openButton <- for{
-          openObserver <- PublishSubject[Unit].pure[Resource[IO,*]]
+          openObserver <- PublishSubject[Unit]().pure[Resource[IO,*]]
           button <- rxbutton[IO](
             label = Observable("Open"),
             openObserver,

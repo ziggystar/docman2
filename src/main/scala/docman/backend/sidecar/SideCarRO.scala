@@ -18,6 +18,7 @@ case class SideCarRO(roots: Seq[(File,Boolean)]) extends RODocumentStore[EitherT
   type F[T] = EitherT[IO,String,T]
   override type Content = File
   override type Id = File
+  type Doc = Document
 
 
   def loadSideCarFiles: IO[Map[File,Document]] = IO{

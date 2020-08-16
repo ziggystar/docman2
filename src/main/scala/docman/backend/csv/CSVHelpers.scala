@@ -6,12 +6,10 @@ import java.nio.file.{Files, Path}
 import cats.effect._
 import cats.instances.all._
 import cats.syntax.all._
-import docman.core.Document
-import io.circe.generic.auto._
+import docman.utils.Logging
 import io.circe.parser._
 import io.circe.syntax._
-
-import docman.utils.Logging
+import io.circe.{Codec, Decoder, Encoder}
 
 object CSVHelpers extends Logging {
   /** Read in a CSV file. If there are multiple entries for a document, the last one counts.
@@ -19,7 +17,7 @@ object CSVHelpers extends Logging {
     * @param db A CSV file that contains one doc per line.
     * @return The list of read entries.
     */
-  def readFile[F[_]: Sync](db: File, createIfNotExists: Boolean): F[List[(Path,Document)]] = for{
+  def readFile[F[_]: Sync,T : Codec](db: File, createIfNotExists: Boolean): F[List[(Path,T)]] = for{
     _ <- touch[F](db)
     res <- Resource.fromAutoCloseable(Sync[F].delay(scala.io.Source.fromFile(db, "UTF8")))
       .use(bs =>
@@ -49,7 +47,7 @@ object CSVHelpers extends Logging {
     * @param data Meta data to write.
     * @return Unit.
     */
-  def write[F[_]: Sync](db: File, docFile: Path, data: Document):F[Unit] =
+  def write[F[_]: Sync, T: Encoder](db: File, docFile: Path, data: T):F[Unit] =
         Resource
           .fromAutoCloseable(
             Sync[F].delay(new FileOutputStream(db, true))
@@ -64,6 +62,6 @@ object CSVHelpers extends Logging {
               }})
           .use(fout => Sync[F].delay(fout.write((makeLine(docFile.toString, data) + "\n").getBytes("UTF8"))))
 
-  def parseLine(line: String): Either[String,(String,Document)] = decode[(String,Document)](line).left.map(_.getMessage)
-  def makeLine(f: String, d: Document): String = (f,d).asJson.noSpaces
+  def parseLine[T: Decoder](line: String): Either[String,(String,T)] = decode[(String,T)](line).left.map(_.getMessage)
+  def makeLine[T: Encoder](f: String, d: T): String = (f,d).asJson.noSpaces
 }

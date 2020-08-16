@@ -6,8 +6,9 @@ import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits._
 import com.monovore.decline._
-import docman.backend.csv.CSVStore
+import docman.backend.csv.AppendFileStore
 import docman.backend.sidecar.SideCarRO
+import docman.core.Document
 
 object CLI extends CommandApp(
   name = "docman-cli",
@@ -49,7 +50,7 @@ object CLICommands {
     val csvFile = dbFileOpt.validate("csv db file must not exist and will be created")(!Files.exists(_))
 
     val scDb: Opts[SideCarRO] = scRoot.map(r => SideCarRO(Seq(r.toFile -> true)))
-    val csvDb: Opts[CSVStore[EitherT[IO,String,?]]] = (csvRoot,csvFile.map(_.toFile)).mapN(CSVStore(_,_, createDbIfNotExists = true))
+    val csvDb: Opts[AppendFileStore[EitherT[IO,String,?], Document]] = (csvRoot,csvFile.map(_.toFile)).mapN(AppendFileStore(_,_, createDbIfNotExists = true))
 
     (scDb,csvDb).mapN { (sd, csv) =>
       val task = for{
