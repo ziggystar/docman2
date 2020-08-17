@@ -19,7 +19,7 @@ object Storable {
   def apply[T : Storable] = implicitly[Storable[T]]
 }
 
-case class AppendFileStore[F[_]: Sync,T : Storable](root: Path, dbFile: File, createDbIfNotExists: Boolean) extends DocumentStore[F] with Logging {
+case class AppendFileStore[F[_]: Sync,T : Storable](root: Path, dbFile: File, createDbIfNotExists: Boolean, readOnly: Boolean = false) extends DocumentStore[F] with Logging {
   override type Content = File
   /** Id is a full or relative path to a pdf file. It must be below one of the root directories. */
   type Id = Path
@@ -39,7 +39,10 @@ case class AppendFileStore[F[_]: Sync,T : Storable](root: Path, dbFile: File, cr
         logger.debug(s"update data for $id to $d")
       }
       dUpdate = Storable[T].modify(LocalDateTime.now())(d)
-      _ <- CSVHelpers.write(dbFile, id, dUpdate)
+      _ <- if(!readOnly)
+        CSVHelpers.write(dbFile, id, dUpdate)
+      else
+        Sync[F].delay(logger.info("not writing record " + d))
       _ <- Sync[F].delay {
         database = database + (id -> dUpdate)
       }
@@ -76,7 +79,7 @@ case class AppendFileStore[F[_]: Sync,T : Storable](root: Path, dbFile: File, cr
 }
 
 object AppendFileStore {
-  def asResource[F[_]: Sync, T : Storable](root: Path, dbFile: File, createDbIfNotExists: Boolean = false): Resource[F,AppendFileStore[F,T]] =
-    Resource.liftF(Sync[F].delay{AppendFileStore(root, dbFile, createDbIfNotExists)})
+  def asResource[F[_]: Sync, T : Storable](root: Path, dbFile: File, createDbIfNotExists: Boolean = false, readOnly: Boolean = false): Resource[F,AppendFileStore[F,T]] =
+    Resource.liftF(Sync[F].delay{AppendFileStore(root, dbFile, createDbIfNotExists, readOnly = readOnly)})
 }
 

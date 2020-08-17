@@ -33,7 +33,10 @@ object Main extends CommandIOApp(
     val dbfile = Opts.option[Path]("dbfile", "data base file")
       .withDefault(Paths.get(System.getProperty("user.home", "")).resolve(".docman2/db.0.csv"))
     val root = Opts.argument[Path]("root").validate("document root must be directory")(Files.isDirectory(_))
-    val dbOpt = (root,dbfile map (_.toFile)).mapN(AppendFileStore.asResource[IO, Document](_,_))
+    val optReadOnly: Opts[Boolean] = Opts.flag("read-only", "do not write to database", "r").orFalse
+    val dbOpt = (root,dbfile map (_.toFile), optReadOnly).mapN { case (r,db,ro) =>
+      AppendFileStore.asResource[IO, Document](root = r, dbFile = db, readOnly = ro)
+    }
 
     dbOpt.map{db =>
       import monix.execution.Scheduler.Implicits.global
