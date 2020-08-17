@@ -121,7 +121,7 @@ object rxtable extends Logging {
       t.setRowSorter(sorter)
       t.getSelectionModel.addListSelectionListener((e: ListSelectionEvent) => {
         if (!e.getValueIsAdjusting)
-          selection.onNext(tm.getRow(t.getSelectedRow)._1)
+          selection.onNext(tm.getRow(t.getRowSorter.convertRowIndexToModel(t.getSelectedRow))._1)
       })
       (0 until t.getColumnModel.getColumnCount).foreach { i =>
         val c = t.getColumnModel.getColumn(i)
