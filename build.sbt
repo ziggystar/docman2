@@ -11,9 +11,14 @@ name := "docman2"
 2.0.1:
  - fix: most frequent tags are NOT displayed
  */
-version := "2.0.2-DEV"
+version := "3.0.0-DEV"
 
-scalaVersion := "2.12.7"
+scalaVersion := "2.13.3"
+//scalaVersion := "0.25.0-RC2"
+
+//scalacOptions ++= {
+//  if (isDotty.value) Seq("-source:3.0-migration") else Nil
+//}
 
 licenses += "GPLv3" -> url("https://www.gnu.org/licenses/gpl-3.0.html")
 
@@ -23,37 +28,44 @@ startYear := Some(2013)
 
 description := "Application for managing PDF files with meta data"
 
-//scala-swing
-libraryDependencies += "org.scala-lang.modules" %% "scala-swing" % "2.0.2"
+addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full)
+addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
+
+resolvers += Resolver.sonatypeRepo("releases")
+
+libraryDependencies += "io.monix" %% "monix" % "3.2.2"
+
+libraryDependencies += "org.typelevel" %% "cats-effect" % "2.1.3"
+
+// https://mvnrepository.com/artifact/io.circe/circe-core
+val circeVersion = "0.13.0"
+
+libraryDependencies ++= Seq(
+  "io.circe" %% "circe-core",
+  "io.circe" %% "circe-generic",
+  "io.circe" %% "circe-parser"
+).map(_ % circeVersion)
+
+libraryDependencies += "com.monovore" %% "decline-effect" % "1.2.0"
+
+//java stuff below
+
+//pdfbox
+libraryDependencies += "org.apache.pdfbox" % "pdfbox" % "2.0.20"
 
 //MigLayout
 libraryDependencies += "com.miglayout" % "miglayout-swing" % "5.2"
 
-libraryDependencies += "io.reactivex" %% "rxscala" % "0.26.5"
-
-//scala-arm
-libraryDependencies += "com.jsuereth" %% "scala-arm" % "2.0"
-
-//configration
-libraryDependencies += "com.github.pureconfig" %% "pureconfig" % "0.9.2"
-
 //icons
-libraryDependencies += "com.github.jiconfont" % "jiconfont-typicons" % "2.0.7.0"
+libraryDependencies += "com.github.jiconfont" % "jiconfont-font_awesome" % "4.7.0.1"
 
 libraryDependencies += "com.github.jiconfont" % "jiconfont-swing" % "1.0.1"
 
-//configuration serialization
-libraryDependencies += "com.lihaoyi" %% "upickle" % "0.6.2"
-
-//logging
-libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.8.0"
+//testing
+// https://mvnrepository.com/artifact/org.specs2/specs2-scalacheck
+libraryDependencies += "org.specs2" %% "specs2-scalacheck" % "4.10.0" % Test
 
 libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3"
-
-//******** Java dependencies
-
-//pdfbox
-libraryDependencies += "org.apache.pdfbox" % "pdfbox" % "2.0.8"
 
 lazy val root = (project in file(".")).
   enablePlugins(BuildInfoPlugin).
@@ -61,3 +73,19 @@ lazy val root = (project in file(".")).
       buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
       buildInfoPackage := "docman"
   )
+
+mainClass in assembly := Some("docman.frontend.cli.CLI")
+
+scalacOptions ++= Seq(
+  "-encoding", "utf8",
+  "-feature",
+  "-deprecation",
+  "-unchecked",
+  "-Xlint",
+//  "-Xfatal-warnings",
+  "-language:implicitConversions",
+  "-language:higherKinds",
+  "-language:existentials",
+  "-language:postfixOps"
+)
+//libraryDependencies := libraryDependencies.value.map(_.withDottyCompat(scalaVersion.value))

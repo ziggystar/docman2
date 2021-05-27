@@ -4,9 +4,10 @@ import java.awt.Component
 import java.io.{File, FileWriter}
 import java.sql.Date
 import java.text.DateFormat
+
+import cats.effect.{IO, Resource}
 import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.{DefaultCellEditor, JTable, JTextField}
-
 import org.apache.pdfbox.pdmodel.PDDocumentInformation
 
 import scala.io.Source
@@ -48,7 +49,7 @@ trait StringStringSerializable extends LineSerializer { self: DProp{type T = Str
 
 trait SwingTableProperty{
   def cellRenderer: DefaultTableCellRenderer = new DefaultTableCellRenderer
-  def cellEditor: DefaultCellEditor = new DefaultCellEditor(new JTextField)
+  def cellEditor: Option[DefaultCellEditor] = Option(new DefaultCellEditor(new JTextField))
 }
 
 object SwingTableProperty{
@@ -97,11 +98,28 @@ object DateDP extends DProp with LineSerializer with SwingTableProperty{
 
   override def cellRenderer: DefaultTableCellRenderer = SwingTableProperty.stringRenderer[Date](d => displayFormat.format(new java.util.Date(d.getTime)))
 
-  override def cellEditor: DefaultCellEditor = new DefaultCellEditor(new JTextField){
+  override def cellEditor: Option[DefaultCellEditor] = Option(new DefaultCellEditor(new JTextField){
     override def getCellEditorValue: AnyRef = Try(Date.valueOf(getComponent.asInstanceOf[JTextField].getText))
       .recoverWith[Date]{ case _ => Try(new Date(shortFormat.parse(getComponent.asInstanceOf[JTextField].getText).getTime))}
       .getOrElse(null)
-  }
+  })
+}
+
+object ModificationDateDP extends DProp with LineSerializer with SwingTableProperty{
+  type T = Date
+
+  def displayFormat: DateFormat = DateFormat.getDateInstance(DateFormat.MEDIUM, java.util.Locale.forLanguageTag("de"))
+  def shortFormat: DateFormat = DateFormat.getDateInstance(DateFormat.SHORT, java.util.Locale.forLanguageTag("de"))
+
+  /** The name of the property. */
+  def name: String = "Modified"
+
+  def mydeserialize(s: String): Option[Date] = Try(Date.valueOf(s)).toOption
+  def myserialize(x: Date): String = x.toString
+
+  override def cellRenderer: DefaultTableCellRenderer = SwingTableProperty.stringRenderer[Date](d => displayFormat.format(new java.util.Date(d.getTime)))
+
+  override def cellEditor: Option[DefaultCellEditor] = None
 }
 
 /** The tags may not contain newlines or commas. */
@@ -115,8 +133,9 @@ object TagListDP extends DProp with LineSerializer with SwingTableProperty {
 
   override def cellRenderer: DefaultTableCellRenderer = SwingTableProperty.stringRenderer[Set[String]](d => d.mkString(","))
 
-  override def cellEditor: DefaultCellEditor = new DefaultCellEditor(new JTextField){
-    override def getCellEditorValue: AnyRef = mydeserialize(getComponent.asInstanceOf[JTextField].getText).orNull
+  override def cellEditor: Option[DefaultCellEditor] = Option(
+    new DefaultCellEditor(new JTextField){
+      override def getCellEditorValue: AnyRef = mydeserialize(getComponent.asInstanceOf[JTextField].getText).orNull
 
     override def getTableCellEditorComponent(table: JTable, value: scala.Any, isSelected: Boolean, row: Int, column: Int): Component = {
       val c = super.getTableCellEditorComponent(table, value, isSelected, row, column).asInstanceOf[JTextField]
@@ -124,6 +143,7 @@ object TagListDP extends DProp with LineSerializer with SwingTableProperty {
       c
     }
   }
+  )
 }
 
 case class PropertyMap protected(m: Map[DProp,AnyRef]){
@@ -139,12 +159,10 @@ case class PropertyMap protected(m: Map[DProp,AnyRef]){
 
 object PropertyMap{
   def empty: PropertyMap = new PropertyMap(Map())
-  def apply[DP <: DProp,P <: DP](kv: (P,P#T)): PropertyMap = new PropertyMap(Map(kv))
 }
 
 object DProp {
-  import resource._
-  val ALL: IndexedSeq[DProp with LineSerializer with SwingTableProperty] = IndexedSeq(AuthorDP, SubjectDP, DateDP, TagListDP)
+  val ALL: IndexedSeq[DProp with LineSerializer with SwingTableProperty] = IndexedSeq(AuthorDP, SubjectDP, DateDP, TagListDP, ModificationDateDP)
 
   def readPropertiesFromPDF(pd: PDDocumentInformation): PropertyMap = {
     val props = for {
@@ -155,21 +173,25 @@ object DProp {
   }
 
   /**
-   * @param f A file containing line-serialized properties.
-   * @return Property map read from the file. */
-  def readPropertiesFromFile(f: File): PropertyMap = {
-    val lines = managed(Source.fromFile(f)).map(_.getLines().toArray).opt.getOrElse(Array())
-    val props = for {
-      line <- lines
-      prop <- ALL
-      value <- prop.deserialize(line)
-    } yield PropertyMap.empty.put(prop)(value)
-    props.foldLeft(PropertyMap.empty)(_ ++ _)
-  }
+    * @param f A file containing line-serialized properties.
+    * @return Property map read from the file. */
+  def readPropertiesFromFile(f: File): PropertyMap =
+    Resource.fromAutoCloseable(IO(Source.fromFile(f)))
+      .use(bs => {
+        IO {
+          val lines = bs.getLines()
+          val props = for {
+            line <- lines
+            prop <- ALL
+            value <- prop.deserialize(line)
+          } yield PropertyMap.empty.put(prop)(value)
+          props.foldLeft(PropertyMap.empty)(_ ++ _)
+        }
+      })
+    .unsafeRunSync()
 
-  def writePropertiesToFile(props: PropertyMap, f: File): Unit = {
-    for( fos <- managed(new FileWriter(f))){
-      fos.write(props.serializeToLines.mkString("\n"))
-    }
-  }
+  def writePropertiesToFile(props: PropertyMap, f: File): Unit =
+    Resource.fromAutoCloseable(IO(new FileWriter(f)))
+    .use(fos => IO(fos.write(props.serializeToLines.mkString("\n"))))
+    .unsafeRunSync()
 }
